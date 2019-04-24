@@ -82,7 +82,7 @@ def newmem(update, context):
                 buttons.append([InlineKeyboardButton(
                     text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
             random.shuffle(buttons)
-            msg = update.message.reply_text(GREET, QUESTION, \nf"请在{TIME}秒内点击按钮选择：\n", reply_markup=InlineKeyboardMarkup(buttons))
+            msg = update.message.reply_text(GREET, QUESTION\n, f"请在{TIME}秒内点击按钮选择：\n", reply_markup=InlineKeyboardMarkup(buttons))
             context.bot.restrict_chat_member(
                 chat_id=chat.id,
                 user_id=user.id,
