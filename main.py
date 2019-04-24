@@ -17,7 +17,12 @@ TIME = 120
 
 BANTIME = 120
 
-EMOJI = '🍥⚓'
+GREET = '欢迎加入本群！'
+
+QUESTION_A = '以下绘文字(emoji)代表的象征意义是？🍥⚓'
+QUESTION_B = '请问 Mea 曾被调侃为除日本之外的哪国人？'
+QUESTION_C = '请问 Mea 动画角色的创造者是谁？'
+QUESTION_D = '请问 Mea 因为在初次直播中OO而被称为？'
 
 RIGHT_A = 'Meaqua'
 RIGHT_B = '法国'
@@ -56,46 +61,28 @@ def newmem(update, context):
     for user in users:
         if not user.is_bot:
             if flag == 1:
-                buttons = [[InlineKeyboardButton(
-                    text=RIGHT_A, callback_data=f"newmem pass {user.id}")]]
-                for t in WRONG_A:
-                    buttons.append([InlineKeyboardButton(
-                        text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
+                QUESTION = QUESTION_A
+                RIGHT = RIGHT_A
+                WRONG = WRONG_A
             if flag == 2:
-                buttons = [[InlineKeyboardButton(
-                    text=RIGHT_B, callback_data=f"newmem pass {user.id}")]]
-                for t in WRONG_B:
-                    buttons.append([InlineKeyboardButton(
-                        text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
+                QUESTION = QUESTION_B
+                RIGHT = RIGHT_B
+                WRONG = WRONG_B
             if flag == 3:
-                buttons = [[InlineKeyboardButton(
-                    text=RIGHT_C, callback_data=f"newmem pass {user.id}")]]
-                for t in WRONG_C:
-                    buttons.append([InlineKeyboardButton(
-                        text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
+                QUESTION = QUESTION_C
+                RIGHT = RIGHT_C
+                WRONG = WRONG_C
             if flag == 4:
-                buttons = [[InlineKeyboardButton(
-                    text=RIGHT_D, callback_data=f"newmem pass {user.id}")]]
-                for t in WRONG_D:
-                    buttons.append([InlineKeyboardButton(
-                        text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
+                QUESTION = QUESTION_D
+                RIGHT = RIGHT_D
+                WRONG = WRONG_D
+            buttons = [[InlineKeyboardButton(
+                text=RIGHT, callback_data=f"newmem pass {user.id}")]]
+            for t in WRONG:
+                buttons.append([InlineKeyboardButton(
+                    text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
             random.shuffle(buttons)
-            if flag == 1:
-                msg = update.message.reply_text(
-                    f"欢迎加入本群！\n请在{TIME}秒内点击按钮选择以下绘文字代表的象征意义：\n{EMOJI}",
-                    reply_markup=InlineKeyboardMarkup(buttons))
-            if flag == 2:
-                msg = update.message.reply_text(
-                    f"欢迎加入本群！请问 Mea 曾被调侃为除日本之外的哪国人？\n请在{TIME}秒内点击按钮选择正确答案：\n",
-                    reply_markup=InlineKeyboardMarkup(buttons))
-            if flag == 3:
-                msg = update.message.reply_text(
-                    f"欢迎加入本群！请问 Mea 动画角色的创造者是谁？\n请在{TIME}秒内点击按钮选择正确答案：\n",
-                    reply_markup=InlineKeyboardMarkup(buttons))
-            if flag == 4:
-                msg = update.message.reply_text(
-                    f"欢迎加入本群！请问 Mea 因为在初次直播中OO而被称为？\n请在{TIME}秒内点击按钮选择正确答案：\n",
-                    reply_markup=InlineKeyboardMarkup(buttons))
+            msg = update.message.reply_text(GREET, QUESTION, \nf"请在{TIME}秒内点击按钮选择：\n", reply_markup=InlineKeyboardMarkup(buttons))
             context.bot.restrict_chat_member(
                 chat_id=chat.id,
                 user_id=user.id,
@@ -157,7 +144,7 @@ def query(update, context):
                           'kick'].schedule_removal()
     else:
         context.bot.answer_callback_query(
-            text="别点了，你已经在群里了", show_alert=True, callback_query_id=update.callback_query.id)
+            text="别点啦，你已经在群里了", show_alert=True, callback_query_id=update.callback_query.id)
 
 
 def main():
