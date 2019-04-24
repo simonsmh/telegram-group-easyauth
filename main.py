@@ -80,19 +80,19 @@ def newmem(update, context):
                     buttons.append([InlineKeyboardButton(
                         text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
             random.shuffle(buttons)
-            if flag == 1
+            if flag == 1:
                 msg = update.message.reply_text(
                     f"欢迎加入本群！\n请在{TIME}秒内点击按钮选择以下绘文字代表的象征意义：\n{EMOJI}",
                     reply_markup=InlineKeyboardMarkup(buttons))
-            if flag == 2
+            if flag == 2:
                 msg = update.message.reply_text(
                     f"欢迎加入本群！请问 Mea 曾被调侃为除日本之外的哪国人？\n请在{TIME}秒内点击按钮选择正确答案：\n",
                     reply_markup=InlineKeyboardMarkup(buttons))
-            if flag == 3
+            if flag == 3:
                 msg = update.message.reply_text(
                     f"欢迎加入本群！请问 Mea 动画角色的创造者是谁？\n请在{TIME}秒内点击按钮选择正确答案：\n",
                     reply_markup=InlineKeyboardMarkup(buttons))
-            if flag == 4
+            if flag == 4:
                 msg = update.message.reply_text(
                     f"欢迎加入本群！请问 Mea 因为在初次直播中OO而被称为？\n请在{TIME}秒内点击按钮选择正确答案：\n",
                     reply_markup=InlineKeyboardMarkup(buttons))
