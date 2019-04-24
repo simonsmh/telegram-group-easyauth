@@ -19,13 +19,19 @@ BANTIME = 120
 
 EMOJI = '🍥⚓'
 
-RIGHT = 'Meaqua'
+RIGHT_A = 'Meaqua'
+RIGHT_B = '法国'
+RIGHT_C = 'Paryi'
+RIGHT_D = '手冲女仆'
 
-WRONG = ["鱼板船锚", "知らない", "酱油通道", "What's up?"]
+WRONG_A = ("鱼板船锚", "知らない", "酱油通道", "What's up?")
+WRONG_B = ("英国", "梵蒂冈", "墨西哥", "不清楚呀")
+WRONG_C = ("犬山老师", "京鸽鸽", "Cerria", "Aqua")
+WRONG_D = ("冲国财布", "不知道", "鱼板船锚", "爱我苏联")
 
 
 def start(update, context):
-    update.message.reply_text('🍥请将我设定为管理员以使用验证功能！🍥')
+    update.message.reply_text('🍥请将我加入群组并设定为管理员以使用验证功能！🍥')
 
 
 def error(update, context):
@@ -46,17 +52,50 @@ def clean(context):
 def newmem(update, context):
     chat = update.message.chat
     users = update.message.new_chat_members
+    flag = random.randint(1,5)
     for user in users:
         if not user.is_bot:
-            buttons = [[InlineKeyboardButton(
-                text=RIGHT, callback_data=f"newmem pass {user.id}")]]
-            for t in WRONG:
-                buttons.append([InlineKeyboardButton(
-                    text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
+            if flag == 1:
+                buttons = [[InlineKeyboardButton(
+                    text=RIGHT_A, callback_data=f"newmem pass {user.id}")]]
+                for t in WRONG_A:
+                    buttons.append([InlineKeyboardButton(
+                        text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
+            if flag == 2:
+                buttons = [[InlineKeyboardButton(
+                    text=RIGHT_B, callback_data=f"newmem pass {user.id}")]]
+                for t in WRONG_B:
+                    buttons.append([InlineKeyboardButton(
+                        text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
+            if flag == 3:
+                buttons = [[InlineKeyboardButton(
+                    text=RIGHT_C, callback_data=f"newmem pass {user.id}")]]
+                for t in WRONG_C:
+                    buttons.append([InlineKeyboardButton(
+                        text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
+            if flag == 4:
+                buttons = [[InlineKeyboardButton(
+                    text=RIGHT_D, callback_data=f"newmem pass {user.id}")]]
+                for t in WRONG_D:
+                    buttons.append([InlineKeyboardButton(
+                        text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
             random.shuffle(buttons)
-            msg = update.message.reply_text(
-                f"欢迎加入本群！\n请在{TIME}秒内点击按钮选择以下绘文字代表的象征意义：\n{EMOJI}",
-                reply_markup=InlineKeyboardMarkup(buttons))
+            if flag == 1
+                msg = update.message.reply_text(
+                    f"欢迎加入本群！\n请在{TIME}秒内点击按钮选择以下绘文字代表的象征意义：\n{EMOJI}",
+                    reply_markup=InlineKeyboardMarkup(buttons))
+            if flag == 2
+                msg = update.message.reply_text(
+                    f"欢迎加入本群！请问 Mea 曾被调侃为除日本之外的哪国人？\n请在{TIME}秒内点击按钮选择正确答案：\n",
+                    reply_markup=InlineKeyboardMarkup(buttons))
+            if flag == 3
+                msg = update.message.reply_text(
+                    f"欢迎加入本群！请问 Mea 动画角色的创造者是谁？\n请在{TIME}秒内点击按钮选择正确答案：\n",
+                    reply_markup=InlineKeyboardMarkup(buttons))
+            if flag == 4
+                msg = update.message.reply_text(
+                    f"欢迎加入本群！请问 Mea 因为在初次直播中OO而被称为？\n请在{TIME}秒内点击按钮选择正确答案：\n",
+                    reply_markup=InlineKeyboardMarkup(buttons))
             context.bot.restrict_chat_member(
                 chat_id=chat.id,
                 user_id=user.id,
@@ -89,7 +128,7 @@ def query(update, context):
                 callback_query_id=update.callback_query.id
             )
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}) 验证通过，请仔细阅读群组公告后参与讨论！",
+                text=f"[{user.first_name}](tg://user?id={user.id}) 验证通过，请仔细阅读群组公告和置顶后参与讨论！",
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
@@ -108,7 +147,7 @@ def query(update, context):
                 callback_query_id=update.callback_query.id
             )
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}) 验证失败，请管理员多加留意！",
+                text=f"[{user.first_name}](tg://user?id={user.id}) 验证失败，已被移出群组！",
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
@@ -118,7 +157,7 @@ def query(update, context):
                           'kick'].schedule_removal()
     else:
         context.bot.answer_callback_query(
-            text="点你妹，就这么想被塞口球吗？", show_alert=True, callback_query_id=update.callback_query.id)
+            text="别点了，你已经在群里了", show_alert=True, callback_query_id=update.callback_query.id)
 
 
 def main():
