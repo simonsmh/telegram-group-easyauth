@@ -17,11 +17,15 @@ TIME = 120
 
 BANTIME = 120
 
-EMOJI = '🍥⚓'
+GREET = "欢迎加入 神楽めあ/Kagura Mea Group！"
 
-RIGHT = 'Meaqua'
-
-WRONG = ["鱼板船锚", "知らない", "酱油通道", "What's up?"]
+# CHALLENGE Format ["Question", "Right Answer", ("Wrong Answer List")]
+CHALLENGE = [
+    ["绘文字🍥⚓代表的象征意义是？", "Meaqua", ("鱼板船锚", "知らない", "酱油通道", "What's up?")],
+    ["请问 Mea 人设为哪国人？", "法国", ("英国", "梵蒂冈", "墨西哥", "不清楚呀")],
+    ["请问 Mea 人设的创造者是谁？", "Paryi", ("佃煮海苔男", "京华", "ゆゆうた", "凪白みと")],
+    ["请问 Mea 因为在初次直播中OO而被称为？", "手冲女仆", ("冲国财布", "不知道", "鱼板船锚", "爱我苏联")]
+]
 
 
 def start(update, context):
@@ -35,7 +39,7 @@ def error(update, context):
 def kick(context):
     data = context.job.context.split(' ')
     context.bot.kick_chat_member(chat_id=data[0], user_id=data[1],
-                                 until_date=datetime.timestamp(datetime.today())+BANTIME)
+                                 until_date=datetime.timestamp(datetime.today()) + BANTIME)
 
 
 def clean(context):
@@ -46,17 +50,17 @@ def clean(context):
 def newmem(update, context):
     chat = update.message.chat
     users = update.message.new_chat_members
+    flag = random.randint(0, len(CHALLENGE) - 1)
     for user in users:
         if not user.is_bot:
             buttons = [[InlineKeyboardButton(
-                text=RIGHT, callback_data=f"newmem pass {user.id}")]]
-            for t in WRONG:
+                text=CHALLENGE[flag][1], callback_data=f"newmem pass {user.id}")]]
+            for t in CHALLENGE[flag][2]:
                 buttons.append([InlineKeyboardButton(
                     text=t, callback_data=f"newmem {random.randint(1, 9999)} {user.id}")])
             random.shuffle(buttons)
-            msg = update.message.reply_text(
-                f"欢迎加入本群！\n请在{TIME}秒内点击按钮选择以下绘文字代表的象征意义：\n{EMOJI}",
-                reply_markup=InlineKeyboardMarkup(buttons))
+            msg = update.message.reply_text(f"{GREET}\n{CHALLENGE[flag][0]}\n请在{TIME}秒内点击按钮选择答案：\n",
+                                            reply_markup=InlineKeyboardMarkup(buttons))
             context.bot.restrict_chat_member(
                 chat_id=chat.id,
                 user_id=user.id,
@@ -66,8 +70,7 @@ def newmem(update, context):
                 can_add_web_page_previews=False
             )
             if context.chat_data.get(str(chat.id) + str(user.id)):
-                context.chat_data[str(chat.id) + str(user.id)
-                                  ].schedule_removal()
+                context.chat_data[str(chat.id) + str(user.id)].schedule_removal()
             context.chat_data[str(chat.id) + str(user.id) + 'kick'] = context.job_queue.run_once(
                 kick, TIME, context=f"{chat.id} {user.id}"
             )
@@ -89,7 +92,7 @@ def query(update, context):
                 callback_query_id=update.callback_query.id
             )
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}) 验证通过，请仔细阅读群组公告后参与讨论！",
+                text=f"[{user.first_name}](tg://user?id={user.id}) 验证通过，请仔细阅读群组公告和置顶后参与讨论！",
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
@@ -103,22 +106,27 @@ def query(update, context):
             )
         else:
             context.bot.answer_callback_query(
-                text="验证失败",
+                text=f"验证失败，请{BANTIME}秒后重试",
                 show_alert=True,
                 callback_query_id=update.callback_query.id
             )
-            context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}) 验证失败，请管理员多加留意！",
-                message_id=message.message_id,
-                chat_id=chat.id, parse_mode='Markdown'
-            )
-            context.bot.kick_chat_member(chat_id=chat.id, user_id=user.id,
-                                         until_date=datetime.timestamp(datetime.today())+BANTIME)
-        context.chat_data[str(chat.id) + str(user.id) +
-                          'kick'].schedule_removal()
+            try:
+                context.bot.kick_chat_member(chat_id=chat.id, user_id=user.id,
+                                             until_date=datetime.timestamp(datetime.today()) + BANTIME)
+            except:
+                context.bot.edit_message_text(
+                    text=f"[{user.first_name}](tg://user?id={user.id}) 验证失败，请管理员多加留意！",
+                    message_id=message.message_id,
+                    chat_id=chat.id, parse_mode='Markdown')
+            else:
+                context.bot.edit_message_text(
+                    text=f"[{user.first_name}](tg://user?id={user.id}) 验证失败，已被移出群组！",
+                    message_id=message.message_id,
+                    chat_id=chat.id, parse_mode='Markdown')
+        context.chat_data[str(chat.id) + str(user.id) + 'kick'].schedule_removal()
     else:
         context.bot.answer_callback_query(
-            text="点你妹，就这么想被塞口球吗？", show_alert=True, callback_query_id=update.callback_query.id)
+            text="别点啦，你已经在群里了", show_alert=True, callback_query_id=update.callback_query.id)
 
 
 def main():
