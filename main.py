@@ -5,6 +5,7 @@ import random
 from datetime import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
+from telegram.ext.dispatcher import run_async
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -30,25 +31,30 @@ CHALLENGE = [
 ]
 
 
+@run_async
 def start(update, context):
     update.message.reply_text('🍥请将我设定为管理员以使用验证功能！🍥')
 
 
+@run_async
 def error(update, context):
     logger.warning('Update "%s" caused error "%s"', context, error)
 
 
+@run_async
 def kick(context):
     data = context.job.context.split(' ')
     context.bot.kick_chat_member(chat_id=data[0], user_id=data[1],
                                  until_date=datetime.timestamp(datetime.today()) + BANTIME)
 
 
+@run_async
 def clean(context):
     data = context.job.context.split(' ')
     context.bot.delete_message(chat_id=data[0], message_id=data[1])
 
 
+@run_async
 def newmem(update, context):
     chat = update.message.chat
     users = update.message.new_chat_members
@@ -81,6 +87,7 @@ def newmem(update, context):
             )
 
 
+@run_async
 def query(update, context):
     user = update.callback_query.from_user
     message = update.callback_query.message
