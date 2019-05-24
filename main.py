@@ -21,17 +21,12 @@ GREET = "欢迎加入 神楽めあ/Kagura Mea Group！"
 
 # CHALLENGE Format ["Question", "Right Answer", ("Wrong Answer List")]
 CHALLENGE = [
-    ["绘文字🍥⚓代表的象征意义是？", "Meaqua", ("鱼板船锚", "知らない", "酱油通道", "What's up?")],
-    ["请问 Mea 人设为哪国人？", "法国", ("英国", "梵蒂冈", "墨西哥", "不清楚呀")],
-    ["请问 Mea 人设的创造者是谁？", "Paryi", ("佃煮海苔男", "京华", "ゆゆうた", "凪白みと")],
-    ["请问 Mea 因为在初次直播中OO而被称为？", "手冲女仆", ("冲国财布", "不知道", "鱼板船锚", "爱我苏联")],
-    ["请问 Mea 最擅长玩哪个游戏？", "Tetris Online Poland", ("Spaltoon 2", "Tetris 99", "PUBG", "Minecraft")],
-    ["请问 Mea 和谁是穴兄弟组？", "Umori Hinako", 
-        ("Inaba Haneru", "Ran", "Minato Aqua", "Ayame")],
-    ["请问 Mea 什么时候通过收益化？", "2018-12-24", 
-        ("2019-4-1", "2018-11-26", "2018-6-28", "2018-12-25")],
-    ["请问 Mea 因和谁比赛输掉而发布谢罪视频？", "Natsuiro Matsuri", 
-        ("Nobuhime", "Minato Aqua", "Inuyama Tamaki", "DWU")]
+    ["绘文字🍥⚓代表的象征意义是？", "Meaqua", ("鱼板船锚", "知らない", "What's up?")],
+    ["请问 Mea 人设为哪国人？", "法国", ("英国", "梵蒂冈", "墨西哥")],
+    ["请问 Mea 人设的创造者是谁？", "Paryi", ("佃煮のりお", "ゆゆうた", "凪白みと")],
+    ["请问 Mea 因为在初次直播中OO而被称为？", "手冲女仆", ("冲国财布", "鱼板船锚", "爱我苏联")],
+    ["请问 Mea 最擅长玩哪个游戏？", "👾Tetris Online Poland", ("🔫Spaltoon 2", "🀄️Sega MJ", "⛑PUBG", "🛠Minecraft")],
+    ["请问 Mea 和谁是穴兄弟组？", "🦇宇森ひなこ", ("🐰因幡はねる", "🐻日ノ隈らん", "⚓湊あくあ", "😈百鬼あやめ")]
 ]
 
 
