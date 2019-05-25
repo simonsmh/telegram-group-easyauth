@@ -91,7 +91,7 @@ def query(update, context):
                 callback_query_id=update.callback_query.id
             )
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id})\n{config['PASS']}",
+                text=f"[{user.first_name}](tg://user?id={user.id}) {config['PASS']}",
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
@@ -114,12 +114,12 @@ def query(update, context):
                                              until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
             except:
                 context.bot.edit_message_text(
-                    text=f"[{user.first_name}](tg://user?id={user.id})\n{config['CHALLENGE'][data[3]]['QUESTION']}:{data[4]}\n{config['NOT_KICK']}",
+                    text=f"[{user.first_name}](tg://user?id={user.id}) {config['NOT_KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
                     message_id=message.message_id,
                     chat_id=chat.id, parse_mode='Markdown')
             else:
                 context.bot.edit_message_text(
-                    text=f"[{user.first_name}](tg://user?id={user.id})\n{config['CHALLENGE'][data[3]]['QUESTION']}:{data[4]}\n{config['KICK']}",
+                    text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
                     message_id=message.message_id,
                     chat_id=chat.id, parse_mode='Markdown')
         context.chat_data[str(chat.id) + str(user.id) +
