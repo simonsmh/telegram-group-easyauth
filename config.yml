@@ -1,0 +1,77 @@
+TOKEN:
+
+#答题时间
+TIME: 120
+
+#封禁时间
+BANTIME: 120
+
+#欢迎信息
+START: 🍥请将我设定为管理员以使用验证功能！🍥
+
+GREET: 欢迎加入 神楽めあ/Kagura Mea Group！\n题目：%s\n请在 %ds 内点击按钮选择答案：
+
+#反馈
+SUCCESS: 验证成功！
+
+RETRY: 验证失败，请在 %ds 后重试！
+
+#通过
+PASS: 验证通过，请仔细阅读群组公告和置顶后参与讨论！
+
+#未通过、无权限
+NOT_KICK: 验证失败，请管理员多加留意！
+
+#未通过、踢出
+KICK: 验证失败，已被移出群组！
+
+#群友手贱
+OTHER: 别点啦，你已经在群里了。
+
+#题目列表
+CHALLENGE:
+  - QUESTION: 绘文字🍥⚓代表的象征意义是？
+    ANSWER: meaqua
+    WRONG:
+      - 鱼板船锚
+      - 知らない
+      - What's up?
+  - QUESTION: 请问 Mea 人设为哪国人？
+    ANSWER: 法国
+    WRONG:
+      - 英国
+      - 梵蒂冈
+      - 墨西哥
+  - QUESTION: 请问 Mea 人设的创造者是谁？
+    ANSWER: Paryi
+    WRONG:
+      - 佃煮のりお
+      - ゆゆうた
+      - 凪白みと
+  - QUESTION: 请问 Mea 因为在初次直播中OO而被称为？
+    ANSWER: 手冲女仆
+    WRONG:
+      - 冲国财布
+      - 鱼板船锚
+      - 爱我苏联
+  - QUESTION: 请问 Mea 最擅长玩哪个游戏？
+    ANSWER: 👾Tetris Online Poland
+    WRONG:
+      - 🔫Splatoon 2
+      - 🀄️Sega MJ
+      - ⛑PUBG
+      - 🛠Minecraft
+  - QUESTION: 请问 Mea 和谁是穴兄弟组？
+    ANSWER: 🦇宇森ひなこ
+    WRONG:
+      - 🐰因幡はねる
+      - 🐻日ノ隈らん
+      - ⚓湊あくあ
+      - 😈百鬼あやめ
+  - QUESTION: 请问 meaqua 线下联动时玩过哪款游戏？
+    ANSWER: 🐰Super Bunny Man
+    WRONG:
+      - 🔫APEX
+      - 🐺Sekiro
+      - ⛏Minecraft
+      - 🌝Human Fall Flat

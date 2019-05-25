@@ -3,11 +3,7 @@
 
 Telegram bot group authentication.
 
-python-telegram-bot >= 12.0.0 is required.
-
-python-telegram-bot: https://github.com/python-telegram-bot/python-telegram-bot
-
-Input your bot's Token on " main.py - 'TOKEN' " and run it.
+[python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) >= 12.0.0b1 is required.
 
 ## License
 GPLv3
