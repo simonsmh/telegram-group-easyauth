@@ -108,3 +108,4 @@ venv.bak/
 Pipfile*
 
 \#*
+config.yml
