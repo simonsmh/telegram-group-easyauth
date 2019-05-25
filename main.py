@@ -51,10 +51,10 @@ def newmem(update, context):
     for user in users:
         if not user.is_bot:
             buttons = [[InlineKeyboardButton(
-                text=config['CHALLENGE'][flag]['ANSWER'], callback_data=f"newmem|pass|{user.id}")]]
+                text=config['CHALLENGE'][flag]['ANSWER'], callback_data=f"newmem|pass|{user.id}|{flag}")]]
             for t in config['CHALLENGE'][flag]['WRONG']:
                 buttons.append([InlineKeyboardButton(
-                    text=t, callback_data=f"newmem|fail|{user.id}|{config['CHALLENGE'][flag]['QUESTION']}|{t}")])
+                    text=t, callback_data=f"newmem|fail|{user.id}|{flag}|{t}")])
             random.shuffle(buttons)
             msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
                                             reply_markup=InlineKeyboardMarkup(buttons))
@@ -114,12 +114,12 @@ def query(update, context):
                                              until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
             except:
                 context.bot.edit_message_text(
-                    text=f"[{user.first_name}](tg://user?id={user.id})\n{data[3]}:{data[4]}\n{config['NOT_KICK']}",
+                    text=f"[{user.first_name}](tg://user?id={user.id})\n{config['CHALLENGE'][data[3]]['QUESTION']}:{data[4]}\n{config['NOT_KICK']}",
                     message_id=message.message_id,
                     chat_id=chat.id, parse_mode='Markdown')
             else:
                 context.bot.edit_message_text(
-                    text=f"[{user.first_name}](tg://user?id={user.id})\n{data[3]}:{data[4]}\n{config['KICK']}",
+                    text=f"[{user.first_name}](tg://user?id={user.id})\n{config['CHALLENGE'][data[3]]['QUESTION']}:{data[4]}\n{config['KICK']}",
                     message_id=message.message_id,
                     chat_id=chat.id, parse_mode='Markdown')
         context.chat_data[str(chat.id) + str(user.id) +
