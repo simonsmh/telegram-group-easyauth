@@ -55,13 +55,15 @@ def clean(context):
     data = context.job.context.split('|')
     try:
         context.bot.delete_message(chat_id=data[0], message_id=data[1])
+        context.bot.delete_message(chat_id=data[0], message_id=data[2])
     except BadRequest:
         logger.warning(
-            f"Not enough rights to delete message for chat member {data[1]} at group {data[0]}")
+            f"Not enough rights to delete message for chat member {data[1]} or {data[2]} at group {data[0]}")
 
 
 @run_async
 def newmem(update, context):
+    message_id = update.message.message_id
     chat = update.message.chat
     users = update.message.new_chat_members
     flag = random.randint(0, len(config['CHALLENGE']) - 1)
@@ -94,7 +96,7 @@ def newmem(update, context):
                 kick, config['TIME'], context=f"{chat.id}|{user.id}"
             )
             context.chat_data[str(chat.id) + str(user.id) + 'clean'] = context.job_queue.run_once(
-                clean, config['TIME'], context=f"{chat.id}|{msg.message_id}"
+                clean, config['TIME'], context=f"{chat.id}|{msg.message_id}|{message_id}"
             )
 
 
