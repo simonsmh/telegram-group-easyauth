@@ -83,6 +83,13 @@ def newmem(update, context):
                         callback_data=f"newmem|check|{user.id}|{flag}|{t}")]
                     )
                 random.shuffle(buttons)
+                buttons.append([InlineKeyboardButton(
+                    text=config['PASS_BTN'],
+                    callback_data=f"newmem|pass|{user.id}"),
+                    InlineKeyboardButton(
+                    text=config['KICK_BTN'],
+                    callback_data=f"newmem|kick|{user.id}")]
+                )
                 msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
                                                 reply_markup=InlineKeyboardMarkup(buttons))
                 try:
@@ -109,8 +116,8 @@ def query(update, context):
     message = update.callback_query.message
     chat = message.chat
     data = update.callback_query.data.split('|')
-    if str(user.id) == data[2]:
-        if data[1] == 'check':
+    if data[1] == 'check':
+        if user.id == int(data[2]):
             if data[4] == config['CHALLENGE'][int(data[3])]['ANSWER']:
                 context.bot.answer_callback_query(
                     text=config['SUCCESS'],
@@ -156,6 +163,50 @@ def query(update, context):
                         message_id=message.message_id,
                         chat_id=chat.id, parse_mode='Markdown')
             queue[str(chat.id) + str(user.id) + 'kick'].schedule_removal()
+        else:
+            context.bot.answer_callback_query(
+                text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
+    elif data[1] == 'pass':
+        if user.id in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
+            context.bot.answer_callback_query(
+                text=config['ADMIN_PASS'], show_alert=False, callback_query_id=update.callback_query.id)
+            context.bot.edit_message_text(
+                text=f"[{user.first_name}](tg://user?id={user.id}):[{data[2]}](tg://user?id={data[2]}) {config['ADMIN_PASS']}",
+                message_id=message.message_id,
+                chat_id=chat.id, parse_mode='Markdown'
+            )
+            try:
+                context.bot.restrict_chat_member(
+                    chat_id=chat.id,
+                    user_id=int(data[2]),
+                    can_send_messages=True,
+                    can_send_media_messages=True,
+                    can_send_other_messages=True,
+                    can_add_web_page_previews=True
+                )
+            except BadRequest:
+                logger.warning(
+                    f"Not enough rights to restrict chat member {data[2]} at group {chat.id}")
+            queue[str(chat.id) + data[2] + 'kick'].schedule_removal()
+        else:
+            context.bot.answer_callback_query(
+                text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
+    elif data[1] == 'kick':
+        if user.id in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
+            context.bot.answer_callback_query(
+                text=config['ADMIN_KICK'], show_alert=False, callback_query_id=update.callback_query.id)
+            context.bot.edit_message_text(
+                text=f"[{user.first_name}](tg://user?id={user.id}):[{data[2]}](tg://user?id={data[2]}) {config['ADMIN_KICK']}",
+                message_id=message.message_id,
+                chat_id=chat.id, parse_mode='Markdown'
+            )
+            try:
+                context.bot.kick_chat_member(chat_id=chat.id, user_id=int(data[2]),
+                                             until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
+            except BadRequest:
+                logger.warning(
+                    f"Not enough rights to kick chat member {data[2]} at group {chat.id}")
+            queue[str(chat.id) + data[2] + 'kick'].schedule_removal()
         else:
             context.bot.answer_callback_query(
                 text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
