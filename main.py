@@ -74,10 +74,14 @@ def newmem(update, context):
         for user in new_chat_members:
             if not user.is_bot:
                 buttons = [[InlineKeyboardButton(
-                    text=config['CHALLENGE'][flag]['ANSWER'], callback_data=f"newmem|pass|{user.id}|{flag}")]]
+                    text=config['CHALLENGE'][flag]['ANSWER'],
+                    callback_data=f"newmem|check|{user.id}|{flag}|{config['CHALLENGE'][flag]['ANSWER']}"
+                )]]
                 for t in config['CHALLENGE'][flag]['WRONG']:
                     buttons.append([InlineKeyboardButton(
-                        text=t, callback_data=f"newmem|fail|{user.id}|{flag}|{t}")])
+                        text=t,
+                        callback_data=f"newmem|check|{user.id}|{flag}|{t}")]
+                    )
                 random.shuffle(buttons)
                 msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
                                                 reply_markup=InlineKeyboardMarkup(buttons))
@@ -106,54 +110,55 @@ def query(update, context):
     chat = message.chat
     data = update.callback_query.data.split('|')
     if str(user.id) == data[2]:
-        if data[1] == 'pass':
-            context.bot.answer_callback_query(
-                text=config['SUCCESS'],
-                show_alert=False,
-                callback_query_id=update.callback_query.id
-            )
-            context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}) {config['PASS']}",
-                message_id=message.message_id,
-                chat_id=chat.id, parse_mode='Markdown'
-            )
-            try:
-                context.bot.restrict_chat_member(
-                    chat_id=chat.id,
-                    user_id=user.id,
-                    can_send_messages=True,
-                    can_send_media_messages=True,
-                    can_send_other_messages=True,
-                    can_add_web_page_previews=True
+        if data[1] == 'check':
+            if data[4] == config['CHALLENGE'][int(data[3])]['ANSWER']:
+                context.bot.answer_callback_query(
+                    text=config['SUCCESS'],
+                    show_alert=False,
+                    callback_query_id=update.callback_query.id
                 )
-            except BadRequest:
-                logger.warning(
-                    f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
+                context.bot.edit_message_text(
+                    text=f"[{user.first_name}](tg://user?id={user.id}) {config['PASS']}",
+                    message_id=message.message_id,
+                    chat_id=chat.id, parse_mode='Markdown'
+                )
+                try:
+                    context.bot.restrict_chat_member(
+                        chat_id=chat.id,
+                        user_id=user.id,
+                        can_send_messages=True,
+                        can_send_media_messages=True,
+                        can_send_other_messages=True,
+                        can_add_web_page_previews=True
+                    )
+                except BadRequest:
+                    logger.warning(
+                        f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
+            else:
+                context.bot.answer_callback_query(
+                    text=config['RETRY'] % config['BANTIME'],
+                    show_alert=True,
+                    callback_query_id=update.callback_query.id
+                )
+                try:
+                    context.bot.kick_chat_member(chat_id=chat.id, user_id=user.id,
+                                                 until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
+                except BadRequest:
+                    context.bot.edit_message_text(
+                        text=f"[{user.first_name}](tg://user?id={user.id}) {config['NOT_KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
+                        message_id=message.message_id,
+                        chat_id=chat.id, parse_mode='Markdown')
+                    logger.warning(
+                        f"Not enough rights to kick chat member {chat.id} at group {user.id}")
+                else:
+                    context.bot.edit_message_text(
+                        text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
+                        message_id=message.message_id,
+                        chat_id=chat.id, parse_mode='Markdown')
+            queue[str(chat.id) + str(user.id) + 'kick'].schedule_removal()
         else:
             context.bot.answer_callback_query(
-                text=config['RETRY'] % config['BANTIME'],
-                show_alert=True,
-                callback_query_id=update.callback_query.id
-            )
-            try:
-                context.bot.kick_chat_member(chat_id=chat.id, user_id=user.id,
-                                             until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
-            except BadRequest:
-                context.bot.edit_message_text(
-                    text=f"[{user.first_name}](tg://user?id={user.id}) {config['NOT_KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
-                    message_id=message.message_id,
-                    chat_id=chat.id, parse_mode='Markdown')
-                logger.warning(
-                    f"Not enough rights to kick chat member {chat.id} at group {user.id}")
-            else:
-                context.bot.edit_message_text(
-                    text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
-                    message_id=message.message_id,
-                    chat_id=chat.id, parse_mode='Markdown')
-        queue[str(chat.id) + str(user.id) + 'kick'].schedule_removal()
-    else:
-        context.bot.answer_callback_query(
-            text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
+                text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
 
 
 if __name__ == '__main__':
