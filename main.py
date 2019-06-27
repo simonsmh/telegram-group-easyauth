@@ -1,12 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+import os
 import random
-import yaml
 from datetime import datetime
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
+from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
+                          MessageHandler, Updater)
 from telegram.ext.dispatcher import run_async
+from yaml import load, dump
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -14,9 +21,10 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 try:
-    config = yaml.load(open('config.yml'))
+    config = load(
+        open(os.path.split(os.path.realpath(__file__))[0] + '/config.yml'), Loader=Loader)
 except FileNotFoundError:
-    logger.log(logging.exception, "Cannot find config.yml.")
+    logger.exception("Cannot find config.yml.")
     exit(1)
 
 
