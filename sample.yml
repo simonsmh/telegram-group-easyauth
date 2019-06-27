@@ -79,10 +79,9 @@ CHALLENGE:
       - ⛏Minecraft
       - 🌝Human Fall Flat
   - QUESTION: 请问 Mea 的第二个Twitter账号的用户名是以下哪个选项？
-    ANSWER: @freeze_mea
+    ANSWER: '@freeze_mea'
     WRONG:
-      - @mea_freeze
-      - @KaguraMea_VoV
-      - @Kagura_mea
-      - @Lich_King
-  
+      - '@mea_freeze'
+      - '@KaguraMea_VoV'
+      - '@Kagura_mea'
+      - '@Lich_King'
