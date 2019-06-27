@@ -28,6 +28,8 @@ except FileNotFoundError:
     logger.exception("Cannot find config.yml.")
     exit(1)
 
+queue = {}
+
 
 @run_async
 def start(update, context):
@@ -91,15 +93,10 @@ def newmem(update, context):
                 except BadRequest:
                     logger.warning(
                         f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
-                if context.chat_data.get(str(chat.id) + str(user.id)):
-                    context.chat_data[str(chat.id) + str(user.id)
-                                      ].schedule_removal()
-                context.chat_data[str(chat.id) + str(user.id) + 'kick'] = context.job_queue.run_once(
-                    kick, config['TIME'], context=f"{chat.id}|{user.id}"
-                )
-                context.chat_data[str(chat.id) + str(user.id) + 'clean'] = context.job_queue.run_once(
-                    clean, config['TIME'], context=f"{chat.id}|{msg.message_id}|{message_id}"
-                )
+                queue[str(chat.id) + str(user.id) + 'kick'] = updater.job_queue.run_once(
+                    kick, config['TIME'], context=f"{chat.id}|{user.id}")
+                queue[str(chat.id) + str(user.id) + 'clean'] = updater.job_queue.run_once(
+                    clean, config['TIME'], context=f"{chat.id}|{msg.message_id}|{message_id}")
 
 
 @run_async
@@ -153,8 +150,7 @@ def query(update, context):
                     text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
                     message_id=message.message_id,
                     chat_id=chat.id, parse_mode='Markdown')
-        context.chat_data[str(chat.id) + str(user.id) +
-                          'kick'].schedule_removal()
+        queue[str(chat.id) + str(user.id) + 'kick'].schedule_removal()
     else:
         context.bot.answer_callback_query(
             text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
