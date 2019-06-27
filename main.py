@@ -9,6 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, Updater)
 from telegram.ext.dispatcher import run_async
+from telegram.error import BadRequest
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -41,14 +42,22 @@ def error(update, context):
 @run_async
 def kick(context):
     data = context.job.context.split('|')
-    context.bot.kick_chat_member(chat_id=data[0], user_id=data[1],
-                                 until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
+    try:
+        context.bot.kick_chat_member(chat_id=data[0], user_id=data[1],
+                                     until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
+    except BadRequest:
+        logger.warning(
+            f"Not enough rights to kick chat member {data[1]} at group {data[0]}")
 
 
 @run_async
 def clean(context):
     data = context.job.context.split('|')
-    context.bot.delete_message(chat_id=data[0], message_id=data[1])
+    try:
+        context.bot.delete_message(chat_id=data[0], message_id=data[1])
+    except BadRequest:
+        logger.warning(
+            f"Not enough rights to delete message for chat member {data[1]} at group {data[0]}")
 
 
 @run_async
@@ -66,14 +75,18 @@ def newmem(update, context):
             random.shuffle(buttons)
             msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
                                             reply_markup=InlineKeyboardMarkup(buttons))
-            context.bot.restrict_chat_member(
-                chat_id=chat.id,
-                user_id=user.id,
-                can_send_messages=False,
-                can_send_media_messages=False,
-                can_send_other_messages=False,
-                can_add_web_page_previews=False
-            )
+            try:
+                context.bot.restrict_chat_member(
+                    chat_id=chat.id,
+                    user_id=user.id,
+                    can_send_messages=False,
+                    can_send_media_messages=False,
+                    can_send_other_messages=False,
+                    can_add_web_page_previews=False
+                )
+            except BadRequest:
+                logger.warning(
+                    f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
             if context.chat_data.get(str(chat.id) + str(user.id)):
                 context.chat_data[str(chat.id) + str(user.id)
                                   ].schedule_removal()
@@ -103,14 +116,18 @@ def query(update, context):
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
-            context.bot.restrict_chat_member(
-                chat_id=chat.id,
-                user_id=user.id,
-                can_send_messages=True,
-                can_send_media_messages=True,
-                can_send_other_messages=True,
-                can_add_web_page_previews=True
-            )
+            try:
+                context.bot.restrict_chat_member(
+                    chat_id=chat.id,
+                    user_id=user.id,
+                    can_send_messages=True,
+                    can_send_media_messages=True,
+                    can_send_other_messages=True,
+                    can_add_web_page_previews=True
+                )
+            except BadRequest:
+                logger.warning(
+                    f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
         else:
             context.bot.answer_callback_query(
                 text=config['RETRY'] % config['BANTIME'],
@@ -120,11 +137,13 @@ def query(update, context):
             try:
                 context.bot.kick_chat_member(chat_id=chat.id, user_id=user.id,
                                              until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
-            except:
+            except BadRequest:
                 context.bot.edit_message_text(
                     text=f"[{user.first_name}](tg://user?id={user.id}) {config['NOT_KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
                     message_id=message.message_id,
                     chat_id=chat.id, parse_mode='Markdown')
+                logger.warning(
+                    f"Not enough rights to kick chat member {chat.id} at group {user.id}")
             else:
                 context.bot.edit_message_text(
                     text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
