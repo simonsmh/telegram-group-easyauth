@@ -65,39 +65,41 @@ def clean(context):
 def newmem(update, context):
     message_id = update.message.message_id
     chat = update.message.chat
-    users = update.message.new_chat_members
+    from_user = update.message.from_user
+    new_chat_members = update.message.new_chat_members
     flag = random.randint(0, len(config['CHALLENGE']) - 1)
-    for user in users:
-        if not user.is_bot:
-            buttons = [[InlineKeyboardButton(
-                text=config['CHALLENGE'][flag]['ANSWER'], callback_data=f"newmem|pass|{user.id}|{flag}")]]
-            for t in config['CHALLENGE'][flag]['WRONG']:
-                buttons.append([InlineKeyboardButton(
-                    text=t, callback_data=f"newmem|fail|{user.id}|{flag}|{t}")])
-            random.shuffle(buttons)
-            msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
-                                            reply_markup=InlineKeyboardMarkup(buttons))
-            try:
-                context.bot.restrict_chat_member(
-                    chat_id=chat.id,
-                    user_id=user.id,
-                    can_send_messages=False,
-                    can_send_media_messages=False,
-                    can_send_other_messages=False,
-                    can_add_web_page_previews=False
+    if from_user.id not in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
+        for user in new_chat_members:
+            if not user.is_bot:
+                buttons = [[InlineKeyboardButton(
+                    text=config['CHALLENGE'][flag]['ANSWER'], callback_data=f"newmem|pass|{user.id}|{flag}")]]
+                for t in config['CHALLENGE'][flag]['WRONG']:
+                    buttons.append([InlineKeyboardButton(
+                        text=t, callback_data=f"newmem|fail|{user.id}|{flag}|{t}")])
+                random.shuffle(buttons)
+                msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
+                                                reply_markup=InlineKeyboardMarkup(buttons))
+                try:
+                    context.bot.restrict_chat_member(
+                        chat_id=chat.id,
+                        user_id=user.id,
+                        can_send_messages=False,
+                        can_send_media_messages=False,
+                        can_send_other_messages=False,
+                        can_add_web_page_previews=False
+                    )
+                except BadRequest:
+                    logger.warning(
+                        f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
+                if context.chat_data.get(str(chat.id) + str(user.id)):
+                    context.chat_data[str(chat.id) + str(user.id)
+                                      ].schedule_removal()
+                context.chat_data[str(chat.id) + str(user.id) + 'kick'] = context.job_queue.run_once(
+                    kick, config['TIME'], context=f"{chat.id}|{user.id}"
                 )
-            except BadRequest:
-                logger.warning(
-                    f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
-            if context.chat_data.get(str(chat.id) + str(user.id)):
-                context.chat_data[str(chat.id) + str(user.id)
-                                  ].schedule_removal()
-            context.chat_data[str(chat.id) + str(user.id) + 'kick'] = context.job_queue.run_once(
-                kick, config['TIME'], context=f"{chat.id}|{user.id}"
-            )
-            context.chat_data[str(chat.id) + str(user.id) + 'clean'] = context.job_queue.run_once(
-                clean, config['TIME'], context=f"{chat.id}|{msg.message_id}|{message_id}"
-            )
+                context.chat_data[str(chat.id) + str(user.id) + 'clean'] = context.job_queue.run_once(
+                    clean, config['TIME'], context=f"{chat.id}|{msg.message_id}|{message_id}"
+                )
 
 
 @run_async
