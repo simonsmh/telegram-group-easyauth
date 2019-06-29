@@ -43,7 +43,7 @@ def error(update, context):
 
 @run_async
 def kick(context):
-    data = context.job.context.split('|')
+    data = context.job.context.split('|-|')
     try:
         context.bot.kick_chat_member(chat_id=data[0], user_id=data[1],
                                      until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
@@ -54,7 +54,7 @@ def kick(context):
 
 @run_async
 def clean(context):
-    data = context.job.context.split('|')
+    data = context.job.context.split('|-|')
     try:
         context.bot.delete_message(chat_id=data[0], message_id=data[1])
     except BadRequest:
@@ -74,20 +74,20 @@ def newmem(update, context):
             if not user.is_bot:
                 buttons = [[InlineKeyboardButton(
                     text=config['CHALLENGE'][flag]['ANSWER'],
-                    callback_data=f"newmem|check|{user.id}|{flag}|{config['CHALLENGE'][flag]['ANSWER']}"
+                    callback_data=f"newmem|-|check|-|{user.id}|-|{flag}|-|{config['CHALLENGE'][flag]['ANSWER']}"
                 )]]
                 for t in config['CHALLENGE'][flag]['WRONG']:
                     buttons.append([InlineKeyboardButton(
                         text=t,
-                        callback_data=f"newmem|check|{user.id}|{flag}|{t}")]
+                        callback_data=f"newmem|-|check|-|{user.id}|-|{flag}|-|{t}")]
                     )
                 random.shuffle(buttons)
                 buttons.append([InlineKeyboardButton(
                     text=config['PASS_BTN'],
-                    callback_data=f"newmem|pass|{user.id}"),
+                    callback_data=f"newmem|-|pass|-|{user.id}"),
                     InlineKeyboardButton(
                     text=config['KICK_BTN'],
-                    callback_data=f"newmem|kick|{user.id}")]
+                    callback_data=f"newmem|-|kick|-|{user.id}")]
                 )
                 msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
                                                 reply_markup=InlineKeyboardMarkup(buttons))
@@ -104,11 +104,11 @@ def newmem(update, context):
                     logger.warning(
                         f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
                 queue[str(chat.id) + str(user.id) + 'kick'] = updater.job_queue.run_once(
-                    kick, config['TIME'], context=f"{chat.id}|{user.id}")
+                    kick, config['TIME'], context=f"{chat.id}|-|{user.id}")
                 queue[str(chat.id) + str(user.id) + 'clean1'] = updater.job_queue.run_once(
-                    clean, config['TIME'], context=f"{chat.id}|{message_id}")
+                    clean, config['TIME'], context=f"{chat.id}|-|{message_id}")
                 queue[str(chat.id) + str(user.id) + 'clean2'] = updater.job_queue.run_once(
-                    clean, config['TIME'], context=f"{chat.id}|{msg.message_id}")
+                    clean, config['TIME'], context=f"{chat.id}|-|{msg.message_id}")
 
 
 @run_async
@@ -116,7 +116,7 @@ def query(update, context):
     user = update.callback_query.from_user
     message = update.callback_query.message
     chat = message.chat
-    data = update.callback_query.data.split('|')
+    data = update.callback_query.data.split('|-|')
     if data[1] == 'check':
         if user.id == int(data[2]):
             if data[4] == config['CHALLENGE'][int(data[3])]['ANSWER']:
