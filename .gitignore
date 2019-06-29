@@ -108,4 +108,5 @@ venv.bak/
 Pipfile*
 
 \#*
-config.yml
+*.yml
+!sample.yml
