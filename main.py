@@ -3,6 +3,7 @@
 import logging
 import os
 import random
+import sys
 from datetime import datetime
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -21,12 +22,17 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-try:
-    config = load(
-        open(os.path.split(os.path.realpath(__file__))[0] + '/config.yml'), Loader=Loader)
-except FileNotFoundError:
-    logger.exception("Cannot find config.yml.")
-    exit(1)
+
+if len(sys.argv) >= 2 and os.path.exists(sys.argv[1]):
+    config = load(open(sys.argv[1]), Loader=Loader)
+    logger.info(f"Loaded {sys.argv[1]}")
+else:
+    try:
+        config = load(open(os.path.split(os.path.realpath(__file__))[0] + '/config.yml'), Loader=Loader)
+        logger.info("Loaded config.yml")
+    except FileNotFoundError:
+        logger.exception("Cannot find config.yml.")
+        sys.exit(1)
 
 queue = {}
 
