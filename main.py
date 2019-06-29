@@ -57,10 +57,9 @@ def clean(context):
     data = context.job.context.split('|')
     try:
         context.bot.delete_message(chat_id=data[0], message_id=data[1])
-        context.bot.delete_message(chat_id=data[0], message_id=data[2])
     except BadRequest:
         logger.warning(
-            f"Not enough rights to delete message for chat member {data[1]} or {data[2]} at group {data[0]}")
+            f"Not enough rights to delete message {data[1]} for chat member at group {data[0]}")
 
 
 @run_async
@@ -106,8 +105,10 @@ def newmem(update, context):
                         f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
                 queue[str(chat.id) + str(user.id) + 'kick'] = updater.job_queue.run_once(
                     kick, config['TIME'], context=f"{chat.id}|{user.id}")
-                queue[str(chat.id) + str(user.id) + 'clean'] = updater.job_queue.run_once(
-                    clean, config['TIME'], context=f"{chat.id}|{msg.message_id}|{message_id}")
+                queue[str(chat.id) + str(user.id) + 'clean1'] = updater.job_queue.run_once(
+                    clean, config['TIME'], context=f"{chat.id}|{message_id}")
+                queue[str(chat.id) + str(user.id) + 'clean2'] = updater.job_queue.run_once(
+                    clean, config['TIME'], context=f"{chat.id}|{msg.message_id}")
 
 
 @run_async
@@ -141,6 +142,7 @@ def query(update, context):
                 except BadRequest:
                     logger.warning(
                         f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
+                queue[str(chat.id) + str(user.id) + 'clean2'].schedule_removal()
             else:
                 context.bot.answer_callback_query(
                     text=config['RETRY'] % config['BANTIME'],
