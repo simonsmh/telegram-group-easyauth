@@ -160,14 +160,14 @@ def query(update, context):
                                                  until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
                 except BadRequest:
                     context.bot.edit_message_text(
-                        text=f"[{user.first_name}](tg://user?id={user.id}) {config['NOT_KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
+                        text=f"[{user.first_name}](tg://user?id={user.id}) {config['NOT_KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}: {data[4]}",
                         message_id=message.message_id,
                         chat_id=chat.id, parse_mode='Markdown')
                     logger.warning(
                         f"Not enough rights to kick chat member {chat.id} at group {user.id}")
                 else:
                     context.bot.edit_message_text(
-                        text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}:{data[4]}",
+                        text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}: {data[4]}",
                         message_id=message.message_id,
                         chat_id=chat.id, parse_mode='Markdown')
             queue[str(chat.id) + str(user.id) + 'kick'].schedule_removal()
@@ -179,7 +179,7 @@ def query(update, context):
             context.bot.answer_callback_query(
                 text=config['ADMIN_PASS'], show_alert=False, callback_query_id=update.callback_query.id)
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}):[{data[2]}](tg://user?id={data[2]}) {config['ADMIN_PASS']}",
+                text=f"[{user.first_name}](tg://user?id={user.id}): [{data[2]}](tg://user?id={data[2]}) {config['ADMIN_PASS']}",
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
@@ -204,7 +204,7 @@ def query(update, context):
             context.bot.answer_callback_query(
                 text=config['ADMIN_KICK'], show_alert=False, callback_query_id=update.callback_query.id)
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}):[{data[2]}](tg://user?id={data[2]}) {config['ADMIN_KICK']}",
+                text=f"[{user.first_name}](tg://user?id={user.id}): [{data[2]}](tg://user?id={data[2]}) {config['ADMIN_KICK']}",
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
