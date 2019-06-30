@@ -148,7 +148,7 @@ def query(update, context):
                 except BadRequest:
                     logger.warning(
                         f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
-                queue[str(chat.id) + str(user.id) + 'clean2'].schedule_removal()
+                queue[str(chat.id) + str(user.id) + 'clean1'].schedule_removal()
             else:
                 context.bot.answer_callback_query(
                     text=config['RETRY'] % config['BANTIME'],
