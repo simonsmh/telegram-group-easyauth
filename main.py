@@ -67,7 +67,7 @@ def clean(context):
         context.bot.delete_message(chat_id=data[0], message_id=data[1])
     except BadRequest:
         logger.warning(
-            f"Not enough rights to delete message {data[1]} for chat member at group {data[0]}")
+            f"Not enough rights to delete message {data[1]} for chat member {data[0]}")
 
 
 @run_async
@@ -111,11 +111,11 @@ def newmem(update, context):
                 except BadRequest:
                     logger.warning(
                         f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
-                queue[str(chat.id) + str(user.id) + 'kick'] = updater.job_queue.run_once(
+                queue[f'{chat.id}{user.id}kick'] = updater.job_queue.run_once(
                     kick, config['TIME'], context=f"{chat.id}|{user.id}")
-                queue[str(chat.id) + str(user.id) + 'clean1'] = updater.job_queue.run_once(
+                queue[f'{chat.id}{user.id}clean1'] = updater.job_queue.run_once(
                     clean, config['TIME'], context=f"{chat.id}|{message_id}")
-                queue[str(chat.id) + str(user.id) + 'clean2'] = updater.job_queue.run_once(
+                queue[f'{chat.id}{user.id}clean2'] = updater.job_queue.run_once(
                     clean, config['TIME'], context=f"{chat.id}|{msg.message_id}")
 
 
@@ -150,8 +150,7 @@ def query(update, context):
                 except BadRequest:
                     logger.warning(
                         f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
-                queue[str(chat.id) + str(user.id) +
-                      'clean1'].schedule_removal()
+                queue[f'{chat.id}{user.id}clean1'].schedule_removal()
             else:
                 context.bot.answer_callback_query(
                     text=config['RETRY'] % config['BANTIME'],
@@ -176,7 +175,7 @@ def query(update, context):
                         text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[3])]['QUESTION']}: {ans}",
                         message_id=message.message_id,
                         chat_id=chat.id, parse_mode='Markdown')
-            queue[str(chat.id) + str(user.id) + 'kick'].schedule_removal()
+            queue[f'{chat.id}{user.id}kick'].schedule_removal()
         else:
             context.bot.answer_callback_query(
                 text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
@@ -201,7 +200,7 @@ def query(update, context):
             except BadRequest:
                 logger.warning(
                     f"Not enough rights to restrict chat member {data[2]} at group {chat.id}")
-            queue[str(chat.id) + data[2] + 'kick'].schedule_removal()
+            queue[f'{chat.id}{data[2]}kick'].schedule_removal()
         else:
             context.bot.answer_callback_query(
                 text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
@@ -220,7 +219,7 @@ def query(update, context):
             except BadRequest:
                 logger.warning(
                     f"Not enough rights to kick chat member {data[2]} at group {chat.id}")
-            queue[str(chat.id) + data[2] + 'kick'].schedule_removal()
+            queue[f'{chat.id}{data[2]}kick'].schedule_removal()
         else:
             context.bot.answer_callback_query(
                 text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
