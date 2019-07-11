@@ -80,6 +80,18 @@ def newmem(update, context):
     if from_user.id not in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
         for user in new_chat_members:
             if not user.is_bot:
+                try:
+                    context.bot.restrict_chat_member(
+                        chat_id=chat.id,
+                        user_id=user.id,
+                        can_send_messages=False,
+                        can_send_media_messages=False,
+                        can_send_other_messages=False,
+                        can_add_web_page_previews=False
+                    )
+                except BadRequest:
+                    logger.warning(
+                        f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
                 buttons = [[InlineKeyboardButton(
                     text=config['CHALLENGE'][flag]['ANSWER'],
                     callback_data=f"challenge|{user.id}|{flag}|{blake2b(config['CHALLENGE'][flag]['ANSWER'].encode(),digest_size=4).hexdigest()}"
@@ -99,18 +111,6 @@ def newmem(update, context):
                 )
                 msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
                                                 reply_markup=InlineKeyboardMarkup(buttons))
-                try:
-                    context.bot.restrict_chat_member(
-                        chat_id=chat.id,
-                        user_id=user.id,
-                        can_send_messages=False,
-                        can_send_media_messages=False,
-                        can_send_other_messages=False,
-                        can_add_web_page_previews=False
-                    )
-                except BadRequest:
-                    logger.warning(
-                        f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
                 queue[f'{chat.id}{user.id}kick'] = updater.job_queue.run_once(
                     kick, config['TIME'], context=f"{chat.id}|{user.id}")
                 queue[f'{chat.id}{user.id}clean1'] = updater.job_queue.run_once(
