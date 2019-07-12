@@ -208,6 +208,7 @@ def admin(update, context):
                 logger.warning(
                     f"Not enough rights to restrict chat member {data[2]} at group {chat.id}")
             queue[f'{chat.id}{data[2]}kick'].schedule_removal()
+            queue[f'{chat.id}{data[2]}clean1'].schedule_removal()
         else:
             context.bot.answer_callback_query(
                 text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
