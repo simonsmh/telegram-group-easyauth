@@ -36,8 +36,14 @@ else:
         logger.exception("Cannot find config.yml.")
         sys.exit(1)
 
-queue = {}
+for flag in config['CHALLENGE']:
+    digest_size = len(flag['WRONG'])
+    flag['wrong'] = []
+    for t in range(digest_size):
+        flag['wrong'].append(blake2b(str(flag['WRONG'][t]).encode(), digest_size=digest_size).hexdigest())
+    flag['answer'] = blake2b(str(flag['ANSWER']).encode(), digest_size=digest_size).hexdigest()
 
+queue = {}
 
 @run_async
 def start(update, context):
@@ -76,7 +82,8 @@ def newmem(update, context):
     chat = update.message.chat
     from_user = update.message.from_user
     new_chat_members = update.message.new_chat_members
-    flag = random.randint(0, len(config['CHALLENGE']) - 1)
+    num = random.randint(0, len(config['CHALLENGE']) - 1)
+    flag = config['CHALLENGE'][num]
     if from_user.id not in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
         for user in new_chat_members:
             if not user.is_bot:
@@ -93,13 +100,13 @@ def newmem(update, context):
                     logger.warning(
                         f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
                 buttons = [[InlineKeyboardButton(
-                    text=config['CHALLENGE'][flag]['ANSWER'],
-                    callback_data=f"challenge|{user.id}|{flag}|{blake2b(config['CHALLENGE'][flag]['ANSWER'].encode(),digest_size=4).hexdigest()}"
+                    text=flag['ANSWER'],
+                    callback_data=f"challenge|{user.id}|{num}|{flag['answer']}"
                 )]]
-                for t in config['CHALLENGE'][flag]['WRONG']:
+                for t in range(len(flag['WRONG'])):
                     buttons.append([InlineKeyboardButton(
-                        text=t,
-                        callback_data=f"challenge|{user.id}|{flag}|{blake2b(t.encode(),digest_size=4).hexdigest()}")]
+                        text=flag['WRONG'][t],
+                        callback_data=f"challenge|{user.id}|{num}|{flag['wrong'][t]}")]
                     )
                 random.shuffle(buttons)
                 buttons.append([InlineKeyboardButton(
@@ -109,7 +116,7 @@ def newmem(update, context):
                     text=config['KICK_BTN'],
                     callback_data=f"admin|kick|{user.id}")]
                 )
-                msg = update.message.reply_text(config['GREET'] % (config['CHALLENGE'][flag]['QUESTION'], config['TIME']),
+                msg = update.message.reply_text(config['GREET'] % (flag['QUESTION'], config['TIME']),
                                                 reply_markup=InlineKeyboardMarkup(buttons))
                 queue[f'{chat.id}{user.id}kick'] = updater.job_queue.run_once(
                     kick, config['TIME'], context=f"{chat.id}|{user.id}")
@@ -126,7 +133,7 @@ def query(update, context):
     chat = message.chat
     data = update.callback_query.data.split('|')
     if user.id == int(data[1]):
-        if data[3] == blake2b(config['CHALLENGE'][int(data[2])]['ANSWER'].encode(), digest_size=4).hexdigest():
+        if data[3] == config['CHALLENGE'][int(data[2])]['answer']:
             context.bot.answer_callback_query(
                 text=config['SUCCESS'],
                 show_alert=False,
@@ -156,9 +163,9 @@ def query(update, context):
                 show_alert=True,
                 callback_query_id=update.callback_query.id
             )
-            for t in config['CHALLENGE'][int(data[2])]['WRONG']:
-                if blake2b(t.encode(), digest_size=4).hexdigest() == data[3]:
-                    ans = t
+            for t in range(len(config['CHALLENGE'][int(data[2])]['wrong'])):
+                if config['CHALLENGE'][int(data[2])]['wrong'][t] == data[3]:
+                    ans = config['CHALLENGE'][int(data[2])]['WRONG'][t]
             try:
                 context.bot.kick_chat_member(chat_id=chat.id, user_id=user.id,
                                              until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
