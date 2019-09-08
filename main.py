@@ -116,7 +116,7 @@ def newmem(update, context):
                     text=config['KICK_BTN'],
                     callback_data=f"admin|kick|{user.id}")]
                 )
-                msg = update.message.reply_text(config['GREET'] % (flag['QUESTION'], config['TIME']),
+                msg = update.message.reply_text(config['GREET'].format(question=flag['QUESTION'], time=config['TIME']),
                                                 reply_markup=InlineKeyboardMarkup(buttons))
                 queue[f'{chat.id}{user.id}kick'] = updater.job_queue.run_once(
                     kick, config['TIME'], context=f"{chat.id}|{user.id}")
@@ -140,7 +140,7 @@ def query(update, context):
                 callback_query_id=update.callback_query.id
             )
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}) {config['PASS']}",
+                text=config['PASS'].format(user=f"[{user.first_name}](tg://user?id={user.id})"),
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
@@ -159,7 +159,7 @@ def query(update, context):
             queue[f'{chat.id}{user.id}clean1'].schedule_removal()
         else:
             context.bot.answer_callback_query(
-                text=config['RETRY'] % config['BANTIME'],
+                text=config['RETRY'].format(time=config['BANTIME']),
                 show_alert=True,
                 callback_query_id=update.callback_query.id
             )
@@ -171,14 +171,14 @@ def query(update, context):
                                              until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
             except BadRequest:
                 context.bot.edit_message_text(
-                    text=f"[{user.first_name}](tg://user?id={user.id}) {config['NOT_KICK']}\n{config['CHALLENGE'][int(data[2])]['QUESTION']}: {ans}",
+                    text=config['NOT_KICK'].format(user=f"[{user.first_name}](tg://user?id={user.id})" ,question=config['CHALLENGE'][int(data[2])]['QUESTION'], ans=ans),
                     message_id=message.message_id,
                     chat_id=chat.id, parse_mode='Markdown')
                 logger.warning(
                     f"Not enough rights to kick chat member {chat.id} at group {user.id}")
             else:
                 context.bot.edit_message_text(
-                    text=f"[{user.first_name}](tg://user?id={user.id}) {config['KICK']}\n{config['CHALLENGE'][int(data[2])]['QUESTION']}: {ans}",
+                    text=config['KICK'].format(user=f"[{user.first_name}](tg://user?id={user.id})", question=config['CHALLENGE'][int(data[2])]['QUESTION'], ans=ans),
                     message_id=message.message_id,
                     chat_id=chat.id, parse_mode='Markdown')
         queue[f'{chat.id}{user.id}kick'].schedule_removal()
@@ -196,9 +196,9 @@ def admin(update, context):
     if data[1] == 'pass':
         if user.id in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
             context.bot.answer_callback_query(
-                text=config['ADMIN_PASS'], show_alert=False, callback_query_id=update.callback_query.id)
+                text=config['PASS_BTN'], show_alert=False, callback_query_id=update.callback_query.id)
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}): [{data[2]}](tg://user?id={data[2]}) {config['ADMIN_PASS']}",
+                text=config['ADMIN_PASS'].format(admin=f"[{user.first_name}](tg://user?id={user.id})", user=f"[{data[2]}](tg://user?id={data[2]})"),
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )
@@ -222,9 +222,9 @@ def admin(update, context):
     elif data[1] == 'kick':
         if user.id in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
             context.bot.answer_callback_query(
-                text=config['ADMIN_KICK'], show_alert=False, callback_query_id=update.callback_query.id)
+                text=config['KICK_BTN'], show_alert=False, callback_query_id=update.callback_query.id)
             context.bot.edit_message_text(
-                text=f"[{user.first_name}](tg://user?id={user.id}): [{data[2]}](tg://user?id={data[2]}) {config['ADMIN_KICK']}",
+                text=config['ADMIN_KICK'].format(admin=f"[{user.first_name}](tg://user?id={user.id})", user=f"[{data[2]}](tg://user?id={data[2]})"),
                 message_id=message.message_id,
                 chat_id=chat.id, parse_mode='Markdown'
             )

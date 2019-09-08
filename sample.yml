@@ -11,22 +11,29 @@ START: 🍥请将我设定为管理员以使用验证功能！🍥
 
 GREET: |
   欢迎加入 神楽めあ/Kagura Mea Group！
-  题目：%s
-  请在 %ds 内点击按钮选择答案：
+  题目：{question}
+  请在 {time} 秒内点击按钮选择答案：
 
 #反馈
 SUCCESS: 验证成功！
 
-RETRY: 验证失败，请在 %ds 后重试！
+RETRY: 验证失败，请在 {time} 秒后重试！
 
 #通过
-PASS: 验证通过，请仔细阅读群组公告和置顶后参与讨论！
+PASS: |
+  {user} 验证通过，请仔细阅读群组公告和置顶后参与讨论！
 
 #未通过、无权限
-NOT_KICK: 验证失败，请管理员多加留意！
+NOT_KICK: |
+  {user} 验证失败，请管理员多加留意！
+  验证问题：{question}
+  回答：{ans}
 
 #未通过、踢出
-KICK: 验证失败，已被移出群组！
+KICK: |
+  {user} 验证失败，已被移出群组！
+  验证问题：{question}
+  回答：{ans}
 
 #按钮文字、通过
 PASS_BTN: 放行
@@ -35,10 +42,12 @@ PASS_BTN: 放行
 KICK_BTN: 踢出
 
 #管理员行为、通过
-ADMIN_PASS: 通过管理员放行。
+ADMIN_PASS: |
+  {user} 通过管理员 {admin} 放行。
 
 #管理员行为、踢出
-ADMIN_KICK: 被管理员踢出。
+ADMIN_KICK: |
+  {user} 被管理员 {admin} 踢出。
 
 #群友手贱
 OTHER: 请勿点击不相干的按钮。
@@ -114,7 +123,7 @@ CHALLENGE:
       - mea外甥
   - QUESTION: KaguraMea 曾隶属于那个企划？
     ANSWER: パリィ プロ ぱりぷろ
-    WRONG: 
+    WRONG:
       - ホロライブ 一期生
       - あにまーれ 编外
       - にじさんじ
@@ -127,7 +136,7 @@ CHALLENGE:
       - 她也记不太清楚
   - QUESTION: KaguraMea 的妹妹是？
     ANSWER: 神楽めう
-    WRONG: 
+    WRONG:
       - 神楽なな
       - 神楽れい
       - 神楽彩
