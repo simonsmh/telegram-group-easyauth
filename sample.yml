@@ -141,20 +141,20 @@ CHALLENGE:
       - 神楽れい
       - 神楽彩
       - 神楽みう
-  - QUSETION: KaguraMea是从什么时候开始活动的？
+  - QUESTION: KaguraMea是从什么时候开始活动的？
     ANSWER: 2018/06/28
     WRONG:
       - 2018/12/01
       - 2018/08/06
       - 2018/12/1
       - 2018/12/24
-  - QUSETION: Freeze_Mea Twitter账号是哪一天被冻结的？
+  - QUESTION: Freeze_Mea Twitter账号是哪一天被冻结的？
     ANSWER: 2018/05/14
     WRONG:
       - 2018/04/28
       - 2018/05/25
       - 2018/05/24
-  - QUSETION: KaguraMea 喜欢μ's里的哪一位idol?
+  - QUESTION: KaguraMea 喜欢μ's里的哪一位idol?
     ANSWER: 矢澤 にこ
     WRONG:
       - 南 ことり
@@ -165,7 +165,7 @@ CHALLENGE:
       - 星空 凛
       - 小泉 花陽
       - 東條 希
-  - QUSETION: KaguraMea 什么时候首次突击主播？
+  - QUESTION: KaguraMea 什么时候首次突击主播？
     ANSWER: 2018/07/13
     WRONG:
       - 2018/11/23
