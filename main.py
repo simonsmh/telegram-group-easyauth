@@ -145,7 +145,7 @@ def query(update, context):
                 context.bot.restrict_chat_member(
                     chat_id=chat.id,
                     user_id=user.id,
-                    permissions=ChatPermissions(can_send_messages=True, can_send_media_messages=True, can_send_polls=True, can_send_other_messages=True, can_add_web_page_previews=True)
+                    permissions=ChatPermissions(can_send_messages=True, can_send_media_messages=True, can_send_polls=True, can_send_other_messages=True, can_add_web_page_previews=True, can_change_info=True, can_invite_users=True, can_pin_messages=True)
                 )
             except BadRequest:
                 logger.warning(
@@ -200,7 +200,7 @@ def admin(update, context):
                 context.bot.restrict_chat_member(
                     chat_id=chat.id,
                     user_id=int(data[2]),
-                    permissions=ChatPermissions(can_send_messages=True, can_send_media_messages=True, can_send_polls=True, can_send_other_messages=True, can_add_web_page_previews=True)
+                    permissions=ChatPermissions(can_send_messages=True, can_send_media_messages=True, can_send_polls=True, can_send_other_messages=True, can_add_web_page_previews=True, can_change_info=True, can_invite_users=True, can_pin_messages=True)
                 )
             except BadRequest:
                 logger.warning(
