@@ -149,11 +149,11 @@ CHALLENGE:
       - 2018/12/1
       - 2018/12/24
   - QUESTION: Freeze_Mea Twitter账号是哪一天被冻结的？
-    ANSWER: 2018/05/14
+    ANSWER: 2019/05/14
     WRONG:
-      - 2018/04/28
-      - 2018/05/25
-      - 2018/05/24
+      - 2019/04/28
+      - 2019/05/25
+      - 2019/05/24
   - QUESTION: KaguraMea 喜欢μ's里的哪一位idol?
     ANSWER: 矢澤 にこ
     WRONG:
@@ -177,3 +177,45 @@ CHALLENGE:
       - 2018年7月13日
       - 2018年7月4日
       - 2018年8月2日
+  - QUESTION:  神楽めあ的原创歌曲(すとろべりぃ♡こんふぃちゅ～る)里一共出现了多少次草莓果酱？
+    ANSWER: 3回
+    WRONG: 
+      - 2回
+      - 4回
+      - 5回
+  - QUESTION: 神楽めあ出道以来第一次联动的对象是谁？
+    ANSWER: 歌衣イツミ
+    WRONG: 
+      - 織田信姫
+      - 卯月コウ
+      - 神楽彩
+  - QUESTION: 和神楽めあ联动次数最多的Vtuber是谁？
+    ANSWER: 日ノ隈らん
+    WRONG:
+      - 湊あくあ
+      - 犬山たまき
+      - 因幡はねる
+  - QUESTION: 2019/05/08 令和第一起事件神楽めあ丢钱包，掉了多少现金？
+    ANSWER: 31K円
+    WRONG:
+      - 20K円
+      - 25K円
+      - 115114円
+  - QUESTION: 神楽めあ的羽织和帽子分别有多重？
+    ANSWER: 羽织20KG 帽子40KG
+    WRONG:
+      - 羽织80KG 帽子25KG
+      - 羽织20KG 帽子10KG
+      - 羽织80KG 帽子40KG
+  - QUESTION: 神楽めあ在学生时代喜欢一下哪一门科目？
+    ANSWER: 国語
+    WRONG:
+      - 体育
+      - 数学
+      - 社会
+  - QUESTION: 神楽めあ在两次憋尿俄罗斯方块里共喝了几次水呢？
+    ANSWER: 8回
+    WRONG:
+      - 4回
+      - 6回
+      - 10回
