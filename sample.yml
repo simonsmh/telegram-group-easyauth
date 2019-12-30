@@ -114,7 +114,7 @@ CHALLENGE:
       - '@Kagura_mea'
       - '@Lich_King'
       - '@Kagura_aqua'
-  - QUESTION: 请问 Meu 的是？
+  - QUESTION: 请问 Meu 是？
     ANSWER: mea妹妹
     WRONG:
       - mea姐姐
@@ -219,3 +219,51 @@ CHALLENGE:
       - 4回
       - 6回
       - 10回
+  - QUESTION: 神楽めあ的第一首原创曲里一共出现了多少次草莓果酱？
+    ANSWER: 3回
+    WRONG:
+      - 114514回
+      - 2回
+      - 4回
+      - 5回
+  - QUESTION: 神楽めあ的出道日期？
+    ANSWER: 2018-06-28
+    WRONG:
+      - 2018-12-24
+      - 2018-06-01
+      - 2018-09-11
+      - 2018-05-20
+  - QUESTION: 神楽めあ的生日？
+    ANSWER: 08-02
+    WRONG:
+      - 06-01
+      - 08-21
+      - 12-01
+      - 每个月27号
+  - QUESTION: 神楽めあ的国家的首都是在那里？
+    ANSWER: 巴黎
+    WRONG:
+      - 柏林
+      - 温哥华
+      - 埃菲尔塔
+      - 伊斯坦布尔
+      - 凯旋门
+      - 伦敦
+  - QUESTION: 除了流星，神楽めあ还有以下哪个男友？
+    ANSWER: 隼人
+    WRONG:
+      - 智
+      - 勇
+      - 流星
+  - QUESTION: 神楽めあ第一次举行线下live的日期？
+    ANSWER: 2019-04-14
+    WRONG:
+      - 2019-07-14
+      - 2019-06-21
+      - 2019-05-20
+  - QUESTION: 神楽めあ发布的第一首翻唱曲是什么？
+    ANSWER: 《BEAST DANCE》
+    WRONG:
+      - 《Connect/コネクト》
+      - 《爱言叶III》
+      - 《Flamingo》
