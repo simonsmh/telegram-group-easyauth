@@ -128,12 +128,13 @@ CHALLENGE:
       - あにまーれ 编外
       - にじさんじ
   - QUESTION: 庄司姐姐，神乐魅娅到底有过几个“男朋友”啊？
-    ANSWER: 4个
+    ANSWER: 
+      - 4个
+      - 她也记不太清楚
     WRONG:
       - 1个
       - 2个
       - 3个
-      - 她也记不太清楚
   - QUESTION: KaguraMea 的妹妹是？
     ANSWER: 神楽めう
     WRONG:
@@ -227,43 +228,46 @@ CHALLENGE:
       - 4回
       - 5回
   - QUESTION: 神楽めあ的出道日期？
-    ANSWER: 2018-06-28
+    ANSWER: 2018/06/28
     WRONG:
-      - 2018-12-24
-      - 2018-06-01
-      - 2018-09-11
-      - 2018-05-20
+      - 2018/12/24
+      - 2018/06/01
+      - 2018/09/11
+      - 2018/05/20
   - QUESTION: 神楽めあ的生日？
-    ANSWER: 08-02
+    ANSWER: 08/02
     WRONG:
-      - 06-01
-      - 08-21
-      - 12-01
-      - 每个月27号
-  - QUESTION: 神楽めあ的国家的首都是在那里？
-    ANSWER: 巴黎
+      - 06/01
+      - 08/21
+      - 12/01
+      - 每月27号
+  - QUESTION: 神楽めあ的母国首都在哪里？
+    ANSWER: 巴黎（Paris）
     WRONG:
-      - 柏林
-      - 温哥华
-      - 埃菲尔塔
-      - 伊斯坦布尔
-      - 凯旋门
-      - 伦敦
-  - QUESTION: 除了流星，神楽めあ还有以下哪个男友？
-    ANSWER: 隼人
+      - 柏林（Berlin）
+      - 温哥华（City of Vancouver）
+      - 埃菲尔塔（La Tour Eiffel）
+      - 伊斯坦布尔（İstanbul）
+      - 凯旋门（Arc de Triomphe）
+      - 伦敦（London）
+  - QUESTION: 除了流星，神楽めあ还有以下哪个牛郎男友？
+    ANSWER: 
+      - 一文字隼人
+      - 雅人
     WRONG:
       - 智
       - 勇
-      - 流星
+      - 田中庄司
   - QUESTION: 神楽めあ第一次举行线下live的日期？
-    ANSWER: 2019-04-14
+    ANSWER: 2019/04/14
     WRONG:
-      - 2019-07-14
-      - 2019-06-21
-      - 2019-05-20
+      - 2019/07/14
+      - 2019/06/21
+      - 2019/05/20
   - QUESTION: 神楽めあ发布的第一首翻唱曲是什么？
-    ANSWER: 《BEAST DANCE》
+    ANSWER: 《ビースト・ダンス》
     WRONG:
       - 《Connect/コネクト》
-      - 《爱言叶III》
+      - 《愛言葉Ⅲ》
       - 《Flamingo》
+      - 《チカっとチカ千花っ♡》
