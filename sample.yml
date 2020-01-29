@@ -1,5 +1,10 @@
 TOKEN:
 
+#如设定群组ID需重启bot
+CHAT:
+
+SUPER_ADMIN_ID:
+
 #答题时间
 TIME: 120
 
@@ -7,7 +12,10 @@ TIME: 120
 BANTIME: 120
 
 #欢迎信息
-START: 🍥请将我设定为管理员以使用验证功能！🍥
+START: |
+  🍥请正确设置 CHAT_ID，并将我设定为管理员以使用验证功能！🍥
+  CHAT_ID: {chat}
+  USER_ID: {user}
 
 GREET: |
   欢迎加入 神楽めあ/Kagura Mea Group！
@@ -53,6 +61,11 @@ ADMIN_KICK: |
 
 #群友手贱
 OTHER: 请勿点击不相干的按钮。
+
+#重新加载配置
+RELOAD: 完成重新加载，现在一共有 {num} 个问题
+
+PENDING: 正在等待任务序列清空
 
 #题目列表
 CHALLENGE:

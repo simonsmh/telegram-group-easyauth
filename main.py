@@ -7,22 +7,21 @@ import sys
 import time
 from hashlib import blake2b
 
-from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.error import BadRequest, ChatMigrated, NetworkError, TelegramError, TimedOut, Unauthorized
-from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, PicklePersistence, Updater
+import ruamel.yaml
+from telegram import (ChatPermissions, InlineKeyboardButton,
+                      InlineKeyboardMarkup)
+from telegram.error import (BadRequest, ChatMigrated, NetworkError,
+                            TelegramError, TimedOut, Unauthorized)
+from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
+                          MessageHandler, PicklePersistence, Updater)
 from telegram.ext.dispatcher import run_async
-from yaml import dump, load
 
 from utils import FullChatPermissions, get_chat_admins
 
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
+yaml = ruamel.yaml.YAML()
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO)
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s",
+                    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +44,7 @@ def parse_callback(data):
                     answer = config["CHALLENGE"][number]["WRONG"][t]
                     break
         logger.info(
-            "New challenge parse callback:\nuser_id: %d\nresult: %r\nquestion: %s\nanswer: %s",
-            user_id,
-            result,
-            question,
-            answer,
+            f"New challenge parse callback:\nuser_id: {user_id}\nresult: {result}\nquestion: {question}\nanswer: {answer}"
         )
         return user_id, result, question, answer
     elif data[0] == "admin":
@@ -58,22 +53,24 @@ def parse_callback(data):
         else:
             result = False
         user_id = int(data[2])
-        logger.info("New admin parse callback:\nuser_id: %d\nresult: %r",
-                    user_id, result)
+        logger.info(
+            f"New admin parse callback:\nuser_id: {user_id}\nresult: {result}")
         return result, user_id
     return
 
 
 @run_async
-def start(update, context):
-    update.message.reply_text(config["START"])
-    logger.info("Current Jobs: %s",
-                str([t.name for t in context.job_queue.jobs()]))
+def start_command(update, context):
+    message = update.message
+    chat = message.chat
+    user = message.from_user
+    message.reply_text(config["START"].format(chat=chat.id, user=user.id))
+    logger.info(f"Current Jobs: {[t.name for t in context.job_queue.jobs()]}")
 
 
 @run_async
 def error(update, context):
-    logger.warning('Update "%s" caused error "%s"', context, error)
+    logger.warning(f"Update {context} caused error {error}")
 
 
 def kick(context, chat_id, user_id):
@@ -148,7 +145,7 @@ def newmem(update, context):
     for user in message.new_chat_members:
         if user.is_bot:
             continue
-        num = random.randint(0, len(config["CHALLENGE"]) - 1)
+        num = random.randint(0, config["number"] - 1)
         flag = config["CHALLENGE"][num]
         if context.bot.restrict_chat_member(
                 chat_id=chat.id,
@@ -310,36 +307,88 @@ def admin(update, context):
         job.schedule_removal()
 
 
-if __name__ == "__main__":
+def load_config():
     if len(sys.argv) >= 2 and os.path.exists(sys.argv[1]):
-        config = load(open(sys.argv[1]), Loader=Loader)
         name = sys.argv[1]
+        with open(name, "r") as file:
+            config = yaml.load(file)
     else:
         try:
             name = "config.yml"
-            config = load(
-                open(f"{os.path.split(os.path.realpath(__file__))[0]}/{name}"),
-                Loader=Loader,
-            )
+            with open(f"{os.path.split(os.path.realpath(__file__))[0]}/{name}",
+                      "r") as file:
+                config = yaml.load(file)
         except FileNotFoundError:
             logger.exception(f"Cannot find {name}.")
             sys.exit(1)
-    logger.info(f"Loaded {name}")
+    logger.info(f"Config: Loaded {name}")
+    if not config["CHAT"]:
+        logger.warning(
+            f"Config: CHAT is not set! Use /start to get one in chat.")
     for flag in config["CHALLENGE"]:
         digest_size = len(flag["WRONG"])
+        flag["answer"] = blake2b(str(flag["ANSWER"]).encode(),
+                                 digest_size=digest_size).hexdigest()
         flag["wrong"] = []
         for t in range(digest_size):
             flag["wrong"].append(
                 blake2b(str(flag["WRONG"][t]).encode(),
                         digest_size=digest_size).hexdigest())
-        flag["answer"] = blake2b(str(flag["ANSWER"]).encode(),
-                                 digest_size=digest_size).hexdigest()
+    config["number"] = len(config["CHALLENGE"])
+    config["name"] = name
+    logger.debug(config)
+    return config
 
-    pp = PicklePersistence(filename=f"{name}.pickle", on_flush=True)
+
+def save_config(config, name=None):
+    if not name:
+        name = f"{config['name']}.bak"
+    with open(name, "w") as file:
+        yaml.dump(config, file)
+    logger.info(f"Config: Dumped {name}")
+
+
+def reload_config(context):
+    for job in context.job_queue.get_jobs_by_name("reload"):
+        job.schedule_removal()
+    jobs = [t.name for t in context.job_queue.jobs()]
+    global config
+    if jobs:
+        context.job_queue.run_once(reload_config,
+                                   config["TIME"],
+                                   name="reload")
+        logger.info(f"Job reload: Waiting for {jobs}")
+        return False
+    else:
+        config = load_config()
+        # save_config(config, config["name"])
+        logger.info(f"Job reload: Successfully reloaded {config['name']}")
+        return True
+
+
+@run_async
+def reload_command(update, context):
+    message = update.message
+    if reload_config(context):
+        message.reply_text(config["RELOAD"].format(num=config["number"]))
+    else:
+        message.reply_text(config["PENDING"])
+
+
+if __name__ == "__main__":
+    config = load_config()
+    save_config(config)
+    pp = PicklePersistence(filename=f"{config['name']}.pickle", on_flush=True)
     updater = Updater(config["TOKEN"], persistence=pp, use_context=True)
-    updater.dispatcher.add_handler(CommandHandler("start", start))
+    updater.dispatcher.add_handler(CommandHandler("start", start_command))
+    updater.dispatcher.add_handler(CommandHandler("reload", reload_command))
     updater.dispatcher.add_handler(
-        MessageHandler(Filters.status_update.new_chat_members, newmem))
+        MessageHandler(
+            ((Filters.status_update.new_chat_members
+              & Filters.chat(config["CHAT"])) if config["CHAT"] else
+             (Filters.status_update.new_chat_members)),
+            newmem,
+        ))
     updater.dispatcher.add_handler(
         CallbackQueryHandler(query, pattern=r"challenge"))
     updater.dispatcher.add_handler(

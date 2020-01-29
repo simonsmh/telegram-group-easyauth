@@ -111,3 +111,4 @@ Pipfile*
 *.yml
 !sample.yml
 *.pickle
+*.bak
