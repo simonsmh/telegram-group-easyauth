@@ -4,50 +4,95 @@ import logging
 import os
 import random
 import sys
-from datetime import datetime
+import time
 from hashlib import blake2b
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
+from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest
-from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
-                          MessageHandler, Updater)
+from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater
 from telegram.ext.dispatcher import run_async
 from yaml import dump, load
+
+from utils import FullChatPermissions, get_chat_admins
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-
 
 if len(sys.argv) >= 2 and os.path.exists(sys.argv[1]):
     config = load(open(sys.argv[1]), Loader=Loader)
     logger.info(f"Loaded {sys.argv[1]}")
 else:
     try:
-        config = load(open(f'{os.path.split(os.path.realpath(__file__))[0]}/config.yml'), Loader=Loader)
+        config = load(
+            open(f"{os.path.split(os.path.realpath(__file__))[0]}/config.yml"),
+            Loader=Loader,
+        )
         logger.info("Loaded config.yml")
     except FileNotFoundError:
         logger.exception("Cannot find config.yml.")
         sys.exit(1)
 
-for flag in config['CHALLENGE']:
-    digest_size = len(flag['WRONG'])
-    flag['wrong'] = []
+for flag in config["CHALLENGE"]:
+    digest_size = len(flag["WRONG"])
+    flag["wrong"] = []
     for t in range(digest_size):
-        flag['wrong'].append(blake2b(str(flag['WRONG'][t]).encode(), digest_size=digest_size).hexdigest())
-    flag['answer'] = blake2b(str(flag['ANSWER']).encode(), digest_size=digest_size).hexdigest()
+        flag["wrong"].append(
+            blake2b(str(flag["WRONG"][t]).encode(),
+                    digest_size=digest_size).hexdigest())
+    flag["answer"] = blake2b(str(flag["ANSWER"]).encode(),
+                             digest_size=digest_size).hexdigest()
 
-queue = {}
+
+def parse_callback(data):
+    data = data.split("|")
+    print(data)
+    if data[0] == "challenge":
+        user_id = int(data[1])
+        number = int(data[2])
+        answer_encode = data[3]
+        question = config["CHALLENGE"][number]["QUESTION"]
+        if answer_encode == config["CHALLENGE"][number]["answer"]:
+            result = True
+            answer = config["CHALLENGE"][number]["ANSWER"]
+        else:
+            result = False
+            for t in range(len(config["CHALLENGE"][number]["wrong"])):
+                if answer_encode == config["CHALLENGE"][number]["wrong"][t]:
+                    answer = config["CHALLENGE"][number]["WRONG"][t]
+                    break
+        logger.info(
+            "New challenge parse callback:\nuser_id: %d\nresult: %r\nquestion: %s\nanswer: %s",
+            user_id,
+            result,
+            question,
+            answer,
+        )
+        return user_id, result, question, answer
+    elif data[0] == "admin":
+        if data[1] == "pass":
+            result = True
+        else:
+            result = False
+        user_id = int(data[2])
+        logger.info("New admin parse callback:\nuser_id: %d\nresult: %r",
+                    user_id, result)
+        return result, user_id
+    return
+
 
 @run_async
 def start(update, context):
-    update.message.reply_text(config['START'])
+    update.message.reply_text(config["START"])
+    logger.info("Current Jobs: %s",
+                str([t.name for t in context.job_queue.jobs()]))
 
 
 @run_async
@@ -55,191 +100,259 @@ def error(update, context):
     logger.warning('Update "%s" caused error "%s"', context, error)
 
 
-@run_async
-def kick(context):
-    data = context.job.context.split('|')
+def kick(context, chat_id, user_id):
     try:
-        context.bot.kick_chat_member(chat_id=data[0], user_id=data[1],
-                                     until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
+        context.bot.kick_chat_member(
+            chat_id=chat_id,
+            user_id=user_id,
+            until_date=int(time.time()) + config["BANTIME"],
+        )
+        logger.info(
+            f"Job kick: Successfully kicked user {user_id} at group {chat_id}")
+        return True
     except BadRequest:
         logger.warning(
-            f"Not enough rights to kick chat member {data[1]} at group {data[0]}")
+            f"Job kick: No enough permissions to kick user {user_id} at group {chat_id}"
+        )
+        return False
 
 
 @run_async
-def clean(context):
-    data = context.job.context.split('|')
+def kick_queue(context):
+    job = context.job
+    kick(context, job.context["chat_id"], job.context["user_id"])
+
+
+def restore(context, chat_id, user_id):
     try:
-        context.bot.delete_message(chat_id=data[0], message_id=data[1])
+        context.bot.restrict_chat_member(
+            chat_id=chat_id,
+            user_id=user_id,
+            permissions=FullChatPermissions,
+        )
+        logger.info(
+            f"Job restore: Successfully restored user {user_id} at group {chat_id}"
+        )
+        return True
     except BadRequest:
         logger.warning(
-            f"Not enough rights to delete message {data[1]} for chat {data[0]}")
+            f"Job restore: No enough permissions to restore user {user_id} at group {chat_id}"
+        )
+        return False
+
+
+def clean(context, chat_id, user_id, message_id):
+    try:
+        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+        logger.info(
+            f"Job clean: Successfully delete message {message_id} for chat {chat_id}"
+        )
+        return True
+    except BadRequest:
+        logger.warning(
+            f"Job clean: No enough permissions to delete message {message_id} for chat {chat_id}"
+        )
+        return False
+
+
+@run_async
+def clean_queue(context):
+    job = context.job
+    clean(
+        context,
+        job.context["chat_id"],
+        job.context["user_id"],
+        job.context["message_id"],
+    )
 
 
 @run_async
 def newmem(update, context):
-    message_id = update.message.message_id
-    chat = update.message.chat
-    from_user = update.message.from_user
-    new_chat_members = update.message.new_chat_members
-    num = random.randint(0, len(config['CHALLENGE']) - 1)
-    flag = config['CHALLENGE'][num]
-    if from_user.id not in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
-        for user in new_chat_members:
-            if not user.is_bot:
-                try:
-                    context.bot.restrict_chat_member(
-                        chat_id=chat.id,
-                        user_id=user.id,
-                        permissions=ChatPermissions(can_send_messages=False)
-                    )
-                except BadRequest:
-                    logger.warning(
-                        f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
-                buttons = [[InlineKeyboardButton(
-                    text=flag['ANSWER'],
-                    callback_data=f"challenge|{user.id}|{num}|{flag['answer']}"
-                )]]
-                for t in range(len(flag['WRONG'])):
-                    buttons.append([InlineKeyboardButton(
-                        text=flag['WRONG'][t],
-                        callback_data=f"challenge|{user.id}|{num}|{flag['wrong'][t]}")]
-                    )
-                random.shuffle(buttons)
-                buttons.append([InlineKeyboardButton(
-                    text=config['PASS_BTN'],
-                    callback_data=f"admin|pass|{user.id}"),
-                    InlineKeyboardButton(
-                    text=config['KICK_BTN'],
-                    callback_data=f"admin|kick|{user.id}")]
+    message = update.message
+    chat = message.chat
+    if message.from_user.id in get_chat_admins(context.bot, chat.id):
+        return
+    for user in message.new_chat_members:
+        if user.is_bot:
+            continue
+        num = random.randint(0, len(config["CHALLENGE"]) - 1)
+        flag = config["CHALLENGE"][num]
+        try:
+            context.bot.restrict_chat_member(
+                chat_id=chat.id,
+                user_id=user.id,
+                permissions=ChatPermissions(can_send_messages=False),
+            )
+            logger.info(
+                f"New member: Successfully restricted user {user.id} at group {chat.id}"
+            )
+        except BadRequest:
+            logger.warning(
+                f"New member: No enough permissions to restrict user {user.id} at group {chat.id}"
+            )
+        buttons = [[
+            InlineKeyboardButton(
+                text=flag["ANSWER"],
+                callback_data=f"challenge|{user.id}|{num}|{flag['answer']}",
+            )
+        ]]
+        for t in range(len(flag["WRONG"])):
+            buttons.append([
+                InlineKeyboardButton(
+                    text=flag["WRONG"][t],
+                    callback_data=
+                    f"challenge|{user.id}|{num}|{flag['wrong'][t]}",
                 )
-                msg = update.message.reply_text(config['GREET'].format(question=flag['QUESTION'], time=config['TIME']),
-                                                reply_markup=InlineKeyboardMarkup(buttons))
-                queue[f'{chat.id}{user.id}kick'] = updater.job_queue.run_once(
-                    kick, config['TIME'], context=f"{chat.id}|{user.id}")
-                queue[f'{chat.id}{user.id}clean1'] = updater.job_queue.run_once(
-                    clean, config['TIME'], context=f"{chat.id}|{message_id}")
-                queue[f'{chat.id}{user.id}clean2'] = updater.job_queue.run_once(
-                    clean, config['TIME'], context=f"{chat.id}|{msg.message_id}")
+            ])
+        random.shuffle(buttons)
+        buttons.append([
+            InlineKeyboardButton(
+                text=config["PASS_BTN"],
+                callback_data=f"admin|pass|{user.id}",
+            ),
+            InlineKeyboardButton(
+                text=config["KICK_BTN"],
+                callback_data=f"admin|kick|{user.id}",
+            ),
+        ])
+        question_message = message.reply_text(
+            config["GREET"].format(question=flag["QUESTION"],
+                                   time=config["TIME"]),
+            reply_markup=InlineKeyboardMarkup(buttons),
+        )
+        updater.job_queue.run_once(
+            kick_queue,
+            config["TIME"],
+            context={
+                "chat_id": chat.id,
+                "user_id": user.id,
+            },
+            name=f"{chat.id}|{user.id}|kick",
+        )
+        updater.job_queue.run_once(
+            clean_queue,
+            config["TIME"],
+            context={
+                "chat_id": chat.id,
+                "user_id": user.id,
+                "message_id": message.message_id,
+            },
+            name=f"{chat.id}|{user.id}|clean_join",
+        )
+        updater.job_queue.run_once(
+            clean_queue,
+            config["TIME"],
+            context={
+                "chat_id": chat.id,
+                "user_id": user.id,
+                "message_id": question_message.message_id,
+            },
+            name=f"{chat.id}|{user.id}|clean_question",
+        )
+        logger.info("Current Jobs: %s",
+                    str([t.name for t in context.job_queue.jobs()]))
 
 
 @run_async
 def query(update, context):
-    user = update.callback_query.from_user
-    message = update.callback_query.message
+    callback_query = update.callback_query
+    user = callback_query.from_user
+    message = callback_query.message
     chat = message.chat
-    data = update.callback_query.data.split('|')
-    if user.id == int(data[1]):
-        if data[3] == config['CHALLENGE'][int(data[2])]['answer']:
-            context.bot.answer_callback_query(
-                text=config['SUCCESS'],
-                show_alert=False,
-                callback_query_id=update.callback_query.id
-            )
-            context.bot.edit_message_text(
-                text=config['PASS'].format(user=f"[{user.first_name}](tg://user?id={user.id})"),
-                message_id=message.message_id,
-                chat_id=chat.id, parse_mode='Markdown'
-            )
-            try:
-                context.bot.restrict_chat_member(
-                    chat_id=chat.id,
-                    user_id=user.id,
-                    permissions=ChatPermissions(can_send_messages=True, can_send_media_messages=True, can_send_polls=True, can_send_other_messages=True, can_add_web_page_previews=True, can_change_info=True, can_invite_users=True, can_pin_messages=True)
-                )
-            except BadRequest:
-                logger.warning(
-                    f"Not enough rights to restrict chat member {chat.id} at group {user.id}")
-            queue[f'{chat.id}{user.id}clean1'].schedule_removal()
-        else:
-            context.bot.answer_callback_query(
-                text=config['RETRY'].format(time=config['BANTIME']),
-                show_alert=True,
-                callback_query_id=update.callback_query.id
-            )
-            for t in range(len(config['CHALLENGE'][int(data[2])]['wrong'])):
-                if config['CHALLENGE'][int(data[2])]['wrong'][t] == data[3]:
-                    ans = config['CHALLENGE'][int(data[2])]['WRONG'][t]
-            try:
-                context.bot.kick_chat_member(chat_id=chat.id, user_id=user.id,
-                                             until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
-            except BadRequest:
-                context.bot.edit_message_text(
-                    text=config['NOT_KICK'].format(user=f"[{user.first_name}](tg://user?id={user.id})" ,question=config['CHALLENGE'][int(data[2])]['QUESTION'], ans=ans),
-                    message_id=message.message_id,
-                    chat_id=chat.id, parse_mode='Markdown')
-                logger.warning(
-                    f"Not enough rights to kick chat member {chat.id} at group {user.id}")
-            else:
-                context.bot.edit_message_text(
-                    text=config['KICK'].format(user=f"[{user.first_name}](tg://user?id={user.id})", question=config['CHALLENGE'][int(data[2])]['QUESTION'], ans=ans),
-                    message_id=message.message_id,
-                    chat_id=chat.id, parse_mode='Markdown')
-        queue[f'{chat.id}{user.id}kick'].schedule_removal()
-    else:
+    user_id, result, question, answer = parse_callback(callback_query.data)
+    if user.id != user_id:
         context.bot.answer_callback_query(
-            text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
+            text=config["OTHER"],
+            show_alert=True,
+            callback_query_id=callback_query.id,
+        )
+        return
+    cqconf = (config["SUCCESS"] if result else config["RETRY"].format(
+        time=config["BANTIME"]))
+    context.bot.answer_callback_query(
+        text=cqconf,
+        show_alert=True,
+        callback_query_id=callback_query.id,
+    )
+    if result:
+        conf = config["PASS"]
+        restore(context, chat.id, user_id)
+        for job in context.job_queue.get_jobs_by_name(
+                f"{chat.id}|{user.id}|clean_join"):
+            job.schedule_removal()
+    else:
+        if kick(context, chat.id, user_id):
+            conf = config["KICK"]
+        else:
+            conf = config["NOT_KICK"]
+    context.bot.edit_message_text(
+        text=conf.format(
+            user=f"[{user.full_name}](tg://user?id={user.id})",
+            question=question,
+            ans=answer,
+        ),
+        message_id=message.message_id,
+        chat_id=chat.id,
+        parse_mode="Markdown",
+    )
+    for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
+        job.schedule_removal()
+    logger.info("Current Jobs: %s",
+                str([t.name for t in context.job_queue.jobs()]))
 
 
 @run_async
 def admin(update, context):
-    user = update.callback_query.from_user
-    message = update.callback_query.message
+    callback_query = update.callback_query
+    user = callback_query.from_user
+    message = callback_query.message
     chat = message.chat
-    data = update.callback_query.data.split('|')
-    if data[1] == 'pass':
-        if user.id in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
-            context.bot.answer_callback_query(
-                text=config['PASS_BTN'], show_alert=False, callback_query_id=update.callback_query.id)
-            context.bot.edit_message_text(
-                text=config['ADMIN_PASS'].format(admin=f"[{user.first_name}](tg://user?id={user.id})", user=f"[{data[2]}](tg://user?id={data[2]})"),
-                message_id=message.message_id,
-                chat_id=chat.id, parse_mode='Markdown'
-            )
-            try:
-                context.bot.restrict_chat_member(
-                    chat_id=chat.id,
-                    user_id=int(data[2]),
-                    permissions=ChatPermissions(can_send_messages=True, can_send_media_messages=True, can_send_polls=True, can_send_other_messages=True, can_add_web_page_previews=True, can_change_info=True, can_invite_users=True, can_pin_messages=True)
-                )
-            except BadRequest:
-                logger.warning(
-                    f"Not enough rights to restrict chat member {data[2]} at group {chat.id}")
-            queue[f'{chat.id}{data[2]}kick'].schedule_removal()
-            queue[f'{chat.id}{data[2]}clean1'].schedule_removal()
-        else:
-            context.bot.answer_callback_query(
-                text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
-    elif data[1] == 'kick':
-        if user.id in [admin.user.id for admin in context.bot.get_chat_administrators(chat.id)]:
-            context.bot.answer_callback_query(
-                text=config['KICK_BTN'], show_alert=False, callback_query_id=update.callback_query.id)
-            context.bot.edit_message_text(
-                text=config['ADMIN_KICK'].format(admin=f"[{user.first_name}](tg://user?id={user.id})", user=f"[{data[2]}](tg://user?id={data[2]})"),
-                message_id=message.message_id,
-                chat_id=chat.id, parse_mode='Markdown'
-            )
-            try:
-                context.bot.kick_chat_member(chat_id=chat.id, user_id=int(data[2]),
-                                             until_date=datetime.timestamp(datetime.today()) + config['BANTIME'])
-            except BadRequest:
-                logger.warning(
-                    f"Not enough rights to kick chat member {data[2]} at group {chat.id}")
-            queue[f'{chat.id}{data[2]}kick'].schedule_removal()
-        else:
-            context.bot.answer_callback_query(
-                text=config['OTHER'], show_alert=True, callback_query_id=update.callback_query.id)
+    if user.id not in get_chat_admins(context.bot, chat.id):
+        context.bot.answer_callback_query(
+            text=config["OTHER"],
+            show_alert=True,
+            callback_query_id=callback_query.id,
+        )
+        return
+    result, user_id = parse_callback(callback_query.data)
+    cqconf = config["PASS_BTN"] if result else config["KICK_BTN"]
+    conf = config["ADMIN_PASS"] if result else config["ADMIN_KICK"]
+    context.bot.answer_callback_query(
+        text=cqconf,
+        show_alert=False,
+        callback_query_id=callback_query.id,
+    )
+    if result:
+        restore(context, chat.id, user_id)
+        for job in context.job_queue.get_jobs_by_name(
+                f"{chat.id}|{user.id}|clean_join"):
+            job.schedule_removal()
+    else:
+        kick(context, chat.id, user_id)
+    context.bot.edit_message_text(
+        text=conf.format(
+            admin=f"[{user.full_name}](tg://user?id={user.id})",
+            user=f"[{user_id}](tg://user?id={user_id})",
+        ),
+        message_id=message.message_id,
+        chat_id=chat.id,
+        parse_mode="Markdown",
+    )
+    for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
+        job.schedule_removal()
+    logger.info("Current Jobs: %s",
+                str([t.name for t in context.job_queue.jobs()]))
 
 
-if __name__ == '__main__':
-    updater = Updater(config['TOKEN'], use_context=True)
+if __name__ == "__main__":
+    updater = Updater(config["TOKEN"], use_context=True)
     updater.dispatcher.add_handler(CommandHandler("start", start))
-    updater.dispatcher.add_handler(MessageHandler(
-        Filters.status_update.new_chat_members, newmem))
     updater.dispatcher.add_handler(
-        CallbackQueryHandler(query, pattern=r'challenge'))
+        MessageHandler(Filters.status_update.new_chat_members, newmem))
     updater.dispatcher.add_handler(
-        CallbackQueryHandler(admin, pattern=r'admin'))
+        CallbackQueryHandler(query, pattern=r"challenge"))
+    updater.dispatcher.add_handler(
+        CallbackQueryHandler(admin, pattern=r"admin"))
     updater.dispatcher.add_error_handler(error)
     updater.start_polling()
     updater.idle()
