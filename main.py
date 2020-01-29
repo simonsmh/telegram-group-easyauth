@@ -8,8 +8,8 @@ import time
 from hashlib import blake2b
 
 from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.error import BadRequest
-from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater
+from telegram.error import BadRequest, ChatMigrated, NetworkError, TelegramError, TimedOut, Unauthorized
+from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, PicklePersistence, Updater
 from telegram.ext.dispatcher import run_async
 from yaml import dump, load
 
@@ -25,30 +25,6 @@ logging.basicConfig(
     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-
-if len(sys.argv) >= 2 and os.path.exists(sys.argv[1]):
-    config = load(open(sys.argv[1]), Loader=Loader)
-    logger.info(f"Loaded {sys.argv[1]}")
-else:
-    try:
-        config = load(
-            open(f"{os.path.split(os.path.realpath(__file__))[0]}/config.yml"),
-            Loader=Loader,
-        )
-        logger.info("Loaded config.yml")
-    except FileNotFoundError:
-        logger.exception("Cannot find config.yml.")
-        sys.exit(1)
-
-for flag in config["CHALLENGE"]:
-    digest_size = len(flag["WRONG"])
-    flag["wrong"] = []
-    for t in range(digest_size):
-        flag["wrong"].append(
-            blake2b(str(flag["WRONG"][t]).encode(),
-                    digest_size=digest_size).hexdigest())
-    flag["answer"] = blake2b(str(flag["ANSWER"]).encode(),
-                             digest_size=digest_size).hexdigest()
 
 
 def parse_callback(data):
@@ -101,16 +77,15 @@ def error(update, context):
 
 
 def kick(context, chat_id, user_id):
-    try:
-        context.bot.kick_chat_member(
+    if context.bot.kick_chat_member(
             chat_id=chat_id,
             user_id=user_id,
             until_date=int(time.time()) + config["BANTIME"],
-        )
+    ):
         logger.info(
             f"Job kick: Successfully kicked user {user_id} at group {chat_id}")
         return True
-    except BadRequest:
+    else:
         logger.warning(
             f"Job kick: No enough permissions to kick user {user_id} at group {chat_id}"
         )
@@ -124,17 +99,16 @@ def kick_queue(context):
 
 
 def restore(context, chat_id, user_id):
-    try:
-        context.bot.restrict_chat_member(
+    if context.bot.restrict_chat_member(
             chat_id=chat_id,
             user_id=user_id,
             permissions=FullChatPermissions,
-        )
+    ):
         logger.info(
             f"Job restore: Successfully restored user {user_id} at group {chat_id}"
         )
         return True
-    except BadRequest:
+    else:
         logger.warning(
             f"Job restore: No enough permissions to restore user {user_id} at group {chat_id}"
         )
@@ -142,15 +116,14 @@ def restore(context, chat_id, user_id):
 
 
 def clean(context, chat_id, user_id, message_id):
-    try:
-        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    if context.bot.delete_message(chat_id=chat_id, message_id=message_id):
         logger.info(
-            f"Job clean: Successfully delete message {message_id} for chat {chat_id}"
+            f"Job clean: Successfully delete message {message_id} from {user_id} at group {chat_id}"
         )
         return True
-    except BadRequest:
+    else:
         logger.warning(
-            f"Job clean: No enough permissions to delete message {message_id} for chat {chat_id}"
+            f"Job clean: No enough permissions to delete message {message_id} from {user_id} at group {chat_id}"
         )
         return False
 
@@ -177,16 +150,15 @@ def newmem(update, context):
             continue
         num = random.randint(0, len(config["CHALLENGE"]) - 1)
         flag = config["CHALLENGE"][num]
-        try:
-            context.bot.restrict_chat_member(
+        if context.bot.restrict_chat_member(
                 chat_id=chat.id,
                 user_id=user.id,
                 permissions=ChatPermissions(can_send_messages=False),
-            )
+        ):
             logger.info(
                 f"New member: Successfully restricted user {user.id} at group {chat.id}"
             )
-        except BadRequest:
+        else:
             logger.warning(
                 f"New member: No enough permissions to restrict user {user.id} at group {chat.id}"
             )
@@ -249,8 +221,6 @@ def newmem(update, context):
             },
             name=f"{chat.id}|{user.id}|clean_question",
         )
-        logger.info("Current Jobs: %s",
-                    str([t.name for t in context.job_queue.jobs()]))
 
 
 @run_async
@@ -297,8 +267,6 @@ def query(update, context):
     )
     for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
         job.schedule_removal()
-    logger.info("Current Jobs: %s",
-                str([t.name for t in context.job_queue.jobs()]))
 
 
 @run_async
@@ -340,12 +308,35 @@ def admin(update, context):
     )
     for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
         job.schedule_removal()
-    logger.info("Current Jobs: %s",
-                str([t.name for t in context.job_queue.jobs()]))
 
 
 if __name__ == "__main__":
-    updater = Updater(config["TOKEN"], use_context=True)
+    if len(sys.argv) >= 2 and os.path.exists(sys.argv[1]):
+        config = load(open(sys.argv[1]), Loader=Loader)
+        name = sys.argv[1]
+    else:
+        try:
+            name = "config.yml"
+            config = load(
+                open(f"{os.path.split(os.path.realpath(__file__))[0]}/{name}"),
+                Loader=Loader,
+            )
+        except FileNotFoundError:
+            logger.exception(f"Cannot find {name}.")
+            sys.exit(1)
+    logger.info(f"Loaded {name}")
+    for flag in config["CHALLENGE"]:
+        digest_size = len(flag["WRONG"])
+        flag["wrong"] = []
+        for t in range(digest_size):
+            flag["wrong"].append(
+                blake2b(str(flag["WRONG"][t]).encode(),
+                        digest_size=digest_size).hexdigest())
+        flag["answer"] = blake2b(str(flag["ANSWER"]).encode(),
+                                 digest_size=digest_size).hexdigest()
+
+    pp = PicklePersistence(filename=f"{name}.pickle", on_flush=True)
+    updater = Updater(config["TOKEN"], persistence=pp, use_context=True)
     updater.dispatcher.add_handler(CommandHandler("start", start))
     updater.dispatcher.add_handler(
         MessageHandler(Filters.status_update.new_chat_members, newmem))
