@@ -15,6 +15,7 @@ from telegram.error import (BadRequest, ChatMigrated, NetworkError,
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, PicklePersistence, Updater)
 from telegram.ext.dispatcher import run_async
+from telegram.ext.filters import MergedFilter
 
 from utils import FullChatPermissions, get_chat_admins
 
@@ -64,7 +65,7 @@ def start_command(update, context):
     message = update.message
     chat = message.chat
     user = message.from_user
-    message.reply_text(config["START"].format(chat=chat.id, user=user.id))
+    message.reply_text(config.get("START").format(chat=chat.id, user=user.id))
     logger.info(f"Current Jobs: {[t.name for t in context.job_queue.jobs()]}")
 
 
@@ -77,7 +78,7 @@ def kick(context, chat_id, user_id):
     if context.bot.kick_chat_member(
             chat_id=chat_id,
             user_id=user_id,
-            until_date=int(time.time()) + config["BANTIME"],
+            until_date=int(time.time()) + config.get("BANTIME"),
     ):
         logger.info(
             f"Job kick: Successfully kicked user {user_id} at group {chat_id}")
@@ -145,7 +146,7 @@ def newmem(update, context):
     for user in message.new_chat_members:
         if user.is_bot:
             continue
-        num = random.randint(0, config["number"] - 1)
+        num = random.randint(0, config.get("number") - 1)
         flag = config["CHALLENGE"][num]
         if context.bot.restrict_chat_member(
                 chat_id=chat.id,
@@ -176,22 +177,22 @@ def newmem(update, context):
         random.shuffle(buttons)
         buttons.append([
             InlineKeyboardButton(
-                text=config["PASS_BTN"],
+                text=config.get("PASS_BTN"),
                 callback_data=f"admin|pass|{user.id}",
             ),
             InlineKeyboardButton(
-                text=config["KICK_BTN"],
+                text=config.get("KICK_BTN"),
                 callback_data=f"admin|kick|{user.id}",
             ),
         ])
         question_message = message.reply_text(
-            config["GREET"].format(question=flag["QUESTION"],
-                                   time=config["TIME"]),
+            config.get("GREET").format(question=flag["QUESTION"],
+                                       time=config.get("TIME")),
             reply_markup=InlineKeyboardMarkup(buttons),
         )
         updater.job_queue.run_once(
             kick_queue,
-            config["TIME"],
+            config.get("TIME"),
             context={
                 "chat_id": chat.id,
                 "user_id": user.id,
@@ -200,7 +201,7 @@ def newmem(update, context):
         )
         updater.job_queue.run_once(
             clean_queue,
-            config["TIME"],
+            config.get("TIME"),
             context={
                 "chat_id": chat.id,
                 "user_id": user.id,
@@ -210,7 +211,7 @@ def newmem(update, context):
         )
         updater.job_queue.run_once(
             clean_queue,
-            config["TIME"],
+            config.get("TIME"),
             context={
                 "chat_id": chat.id,
                 "user_id": user.id,
@@ -229,29 +230,29 @@ def query(update, context):
     user_id, result, question, answer = parse_callback(callback_query.data)
     if user.id != user_id:
         context.bot.answer_callback_query(
-            text=config["OTHER"],
+            text=config.get("OTHER"),
             show_alert=True,
             callback_query_id=callback_query.id,
         )
         return
-    cqconf = (config["SUCCESS"] if result else config["RETRY"].format(
-        time=config["BANTIME"]))
+    cqconf = (config.get("SUCCESS") if result else config.get("RETRY").format(
+        time=config.get("BANTIME")))
     context.bot.answer_callback_query(
         text=cqconf,
         show_alert=True,
         callback_query_id=callback_query.id,
     )
     if result:
-        conf = config["PASS"]
+        conf = config.get("PASS")
         restore(context, chat.id, user_id)
         for job in context.job_queue.get_jobs_by_name(
                 f"{chat.id}|{user.id}|clean_join"):
             job.schedule_removal()
     else:
         if kick(context, chat.id, user_id):
-            conf = config["KICK"]
+            conf = config.get("KICK")
         else:
-            conf = config["NOT_KICK"]
+            conf = config.get("NOT_KICK")
     context.bot.edit_message_text(
         text=conf.format(
             user=f"[{user.full_name}](tg://user?id={user.id})",
@@ -274,14 +275,14 @@ def admin(update, context):
     chat = message.chat
     if user.id not in get_chat_admins(context.bot, chat.id):
         context.bot.answer_callback_query(
-            text=config["OTHER"],
+            text=config.get("OTHER"),
             show_alert=True,
             callback_query_id=callback_query.id,
         )
         return
     result, user_id = parse_callback(callback_query.data)
-    cqconf = config["PASS_BTN"] if result else config["KICK_BTN"]
-    conf = config["ADMIN_PASS"] if result else config["ADMIN_KICK"]
+    cqconf = config.get("PASS_BTN") if result else config.get("KICK_BTN")
+    conf = config.get("ADMIN_PASS") if result else config.get("ADMIN_KICK")
     context.bot.answer_callback_query(
         text=cqconf,
         show_alert=False,
@@ -307,42 +308,57 @@ def admin(update, context):
         job.schedule_removal()
 
 
-def load_config():
-    if len(sys.argv) >= 2 and os.path.exists(sys.argv[1]):
-        name = sys.argv[1]
-        with open(name, "r") as file:
+def load_yaml(filename="config.yml"):
+    try:
+        with open(filename, "r") as file:
             config = yaml.load(file)
-    else:
+    except FileNotFoundError:
         try:
-            name = "config.yml"
-            with open(f"{os.path.split(os.path.realpath(__file__))[0]}/{name}",
-                      "r") as file:
+            filename = f"{os.path.split(os.path.realpath(__file__))[0]}/{filename}"
+            with open(filename, "r") as file:
                 config = yaml.load(file)
         except FileNotFoundError:
-            logger.exception(f"Cannot find {name}.")
+            logger.exception(f"Cannot find {filename}.")
             sys.exit(1)
-    logger.info(f"Config: Loaded {name}")
-    if not config["CHAT"]:
+    logger.info(f"Yaml: Loaded {filename}")
+    config["filename"] = filename
+    return config
+
+
+def load_config():
+    if len(sys.argv) >= 2 and os.path.exists(sys.argv[1]):
+        filename = sys.argv[1]
+        config = load_yaml(filename)
+    else:
+        config = load_yaml()
+    if not config.get("CHAT"):
         logger.warning(
             f"Config: CHAT is not set! Use /start to get one in chat.")
-    for flag in config["CHALLENGE"]:
-        digest_size = len(flag["WRONG"])
-        flag["answer"] = blake2b(str(flag["ANSWER"]).encode(),
+    for flag in config.get("CHALLENGE"):
+        digest_size = len(flag.get("WRONG"))
+        flag["answer"] = blake2b(str(flag.get("ANSWER")).encode(),
                                  digest_size=digest_size).hexdigest()
-        flag["wrong"] = []
-        for t in range(digest_size):
-            flag["wrong"].append(
-                blake2b(str(flag["WRONG"][t]).encode(),
-                        digest_size=digest_size).hexdigest())
-    config["number"] = len(config["CHALLENGE"])
-    config["name"] = name
+        flag["wrong"] = [
+            blake2b(str(flag["WRONG"][t]).encode(),
+                    salt=os.urandom(16),
+                    digest_size=digest_size).hexdigest()
+            for t in range(digest_size)
+        ]
+    config["number"] = len(config.get("CHALLENGE"))
     logger.debug(config)
     return config
 
 
 def save_config(config, name=None):
     if not name:
-        name = f"{config['name']}.bak"
+        name = f"{config.get('filename')}.bak"
+    config.pop("filename")
+    config.pop("number")
+    for flag in config.get("CHALLENGE"):
+        if flag.get("answer"):
+            flag.pop("answer")
+        if flag.get("wrong"):
+            flag.pop("wrong")
     with open(name, "w") as file:
         yaml.dump(config, file)
     logger.info(f"Config: Dumped {name}")
@@ -355,40 +371,45 @@ def reload_config(context):
     global config
     if jobs:
         context.job_queue.run_once(reload_config,
-                                   config["TIME"],
+                                   config.get("TIME"),
                                    name="reload")
         logger.info(f"Job reload: Waiting for {jobs}")
         return False
     else:
         config = load_config()
-        # save_config(config, config["name"])
-        logger.info(f"Job reload: Successfully reloaded {config['name']}")
+        # save_config(config, config.get("filename"))
+        logger.info(
+            f"Job reload: Successfully reloaded {config.get('filename')}")
         return True
 
 
 @run_async
 def reload_command(update, context):
     message = update.message
+    chat = message.chat
+    if message.from_user.id not in get_chat_admins(context.bot, chat.id):
+        return
     if reload_config(context):
-        message.reply_text(config["RELOAD"].format(num=config["number"]))
+        message.reply_text(
+            config.get("RELOAD").format(num=config.get("number")))
     else:
-        message.reply_text(config["PENDING"])
+        message.reply_text(config.get("PENDING"))
 
 
 if __name__ == "__main__":
     config = load_config()
     save_config(config)
-    pp = PicklePersistence(filename=f"{config['name']}.pickle", on_flush=True)
-    updater = Updater(config["TOKEN"], persistence=pp, use_context=True)
+    pp = PicklePersistence(filename=f"{config.get('filename')}.pickle",
+                           on_flush=True)
+    updater = Updater(config.get("TOKEN"), persistence=pp, use_context=True)
     updater.dispatcher.add_handler(CommandHandler("start", start_command))
-    updater.dispatcher.add_handler(CommandHandler("reload", reload_command))
+    chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
+    updater.dispatcher.add_handler(
+        CommandHandler("reload", reload_command, filters=chatfilter))
     updater.dispatcher.add_handler(
         MessageHandler(
-            ((Filters.status_update.new_chat_members
-              & Filters.chat(config["CHAT"])) if config["CHAT"] else
-             (Filters.status_update.new_chat_members)),
-            newmem,
-        ))
+            MergedFilter(Filters.status_update.new_chat_members,
+                         and_filter=chatfilter), newmem))
     updater.dispatcher.add_handler(
         CallbackQueryHandler(query, pattern=r"challenge"))
     updater.dispatcher.add_handler(
