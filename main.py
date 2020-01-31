@@ -335,7 +335,10 @@ def load_config():
         logger.warning(
             f"Config: CHAT is not set! Use /start to get one in chat.")
     for flag in config.get("CHALLENGE"):
-        digest_size = len(flag.get("WRONG"))
+        assert flag.get("QUESTION"), "No QUESTION tile for question"
+        assert flag.get("ANSWER"), f"No ANSWER tile for question: {flag.get('QUESTION')}"
+        assert flag.get("WRONG"), f"No WRONG tile for question: {flag.get('QUESTION')}"
+        assert (digest_size := len(flag.get("WRONG"))) < 20, f"Too many tiles for WRONG for question: {flag.get('QUESTION')}"
         flag["answer"] = blake2b(str(flag.get("ANSWER")).encode(),
                                  digest_size=digest_size).hexdigest()
         flag["wrong"] = [
