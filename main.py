@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import copy
 import logging
 import os
 import random
@@ -9,7 +10,7 @@ from hashlib import blake2b
 
 import ruamel.yaml
 from telegram import (ChatPermissions, InlineKeyboardButton,
-                      InlineKeyboardMarkup)
+                      InlineKeyboardMarkup, ParseMode)
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
@@ -17,7 +18,6 @@ from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
 from telegram.ext.dispatcher import run_async
 from telegram.ext.filters import MergedFilter
 from telegram.utils.helpers import mention_markdown
-
 
 from utils import FullChatPermissions, get_chat_admins
 
@@ -67,7 +67,8 @@ def start_command(update, context):
     message = update.message
     chat = message.chat
     user = message.from_user
-    message.reply_text(config.get("START").format(chat=chat.id, user=user.id))
+    message.reply_text(config.get("START").format(chat=chat.id, user=user.id),
+                       parse_mode=ParseMode.MARKDOWN)
     logger.info(f"Current Jobs: {[t.name for t in context.job_queue.jobs()]}")
 
 
@@ -191,6 +192,7 @@ def newmem(update, context):
             config.get("GREET").format(question=flag["QUESTION"],
                                        time=config.get("TIME")),
             reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode=ParseMode.MARKDOWN,
         )
         updater.job_queue.run_once(
             kick_queue,
@@ -255,15 +257,13 @@ def query(update, context):
             conf = config.get("KICK")
         else:
             conf = config.get("NOT_KICK")
-    context.bot.edit_message_text(
+    message.edit_text(
         text=conf.format(
             user=mention_markdown(user.id, user.full_name),
             question=question,
             ans=answer,
         ),
-        message_id=message.message_id,
-        chat_id=chat.id,
-        parse_mode="Markdown",
+        parse_mode=ParseMode.MARKDOWN,
     )
     for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
         job.schedule_removal()
@@ -297,14 +297,12 @@ def admin(update, context):
             job.schedule_removal()
     else:
         kick(context, chat.id, user_id)
-    context.bot.edit_message_text(
+    message.edit_text(
         text=conf.format(
             admin=mention_markdown(user.id, user.full_name),
             user=mention_markdown(user_id, user_id),
         ),
-        message_id=message.message_id,
-        chat_id=chat.id,
-        parse_mode="Markdown",
+        parse_mode=ParseMode.MARKDOWN,
     )
     for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
         job.schedule_removal()
@@ -352,18 +350,20 @@ def load_config():
 
 
 def save_config(config, name=None):
+    save = copy.deepcopy(config)
     if not name:
-        name = f"{config.get('filename')}.bak"
-    config.pop("filename")
-    config.pop("number")
-    for flag in config.get("CHALLENGE"):
+        name = f"{save.get('filename')}.bak"
+    save.pop("filename")
+    save.pop("number")
+    for flag in save.get("CHALLENGE"):
         if flag.get("answer"):
             flag.pop("answer")
         if flag.get("wrong"):
             flag.pop("wrong")
     with open(name, "w") as file:
-        yaml.dump(config, file)
+        yaml.dump(save, file)
     logger.info(f"Config: Dumped {name}")
+    logger.debug(save)
 
 
 def reload_config(context):
@@ -391,11 +391,9 @@ def reload_command(update, context):
     chat = message.chat
     if message.from_user.id not in get_chat_admins(context.bot, chat.id):
         return
-    if reload_config(context):
-        message.reply_text(
-            config.get("RELOAD").format(num=config.get("number")))
-    else:
-        message.reply_text(config.get("PENDING"))
+    message.reply_text(config.get("RELOAD").format(num=config.get("number"))
+                       if reload_config(context) else config.get("PENDING"),
+                       parse_mode=ParseMode.MARKDOWN)
 
 
 if __name__ == "__main__":
@@ -405,7 +403,8 @@ if __name__ == "__main__":
                            on_flush=True)
     updater = Updater(config.get("TOKEN"), persistence=pp, use_context=True)
     updater.dispatcher.add_handler(CommandHandler("start", start_command))
-    chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
+    chatfilter = Filters.chat(
+        config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
         CommandHandler("reload", reload_command, filters=chatfilter))
     updater.dispatcher.add_handler(
@@ -413,9 +412,9 @@ if __name__ == "__main__":
             MergedFilter(Filters.status_update.new_chat_members,
                          and_filter=chatfilter), newmem))
     updater.dispatcher.add_handler(
-        CallbackQueryHandler(query, pattern=r"challenge"))
+        CallbackQueryHandler(query, pattern=r"^challenge"))
     updater.dispatcher.add_handler(
-        CallbackQueryHandler(admin, pattern=r"admin"))
+        CallbackQueryHandler(admin, pattern=r"^admin"))
     updater.dispatcher.add_error_handler(error)
     updater.start_polling()
     updater.idle()
