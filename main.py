@@ -6,7 +6,7 @@ import os
 import random
 import sys
 import time
-from hashlib import blake2b
+from hashlib import blake2s
 
 import ruamel.yaml
 from telegram import (ChatPermissions, InlineKeyboardButton,
@@ -339,11 +339,12 @@ def load_config():
         assert flag.get("ANSWER"), f"No ANSWER tile for question: {flag.get('QUESTION')}"
         assert flag.get("WRONG"), f"No WRONG tile for question: {flag.get('QUESTION')}"
         assert (digest_size := len(flag.get("WRONG"))) < 20, f"Too many tiles for WRONG for question: {flag.get('QUESTION')}"
-        flag["answer"] = blake2b(str(flag.get("ANSWER")).encode(),
+        flag["answer"] = blake2s(str(flag.get("ANSWER")).encode(),
+                                 salt=os.urandom(8),
                                  digest_size=digest_size).hexdigest()
         flag["wrong"] = [
-            blake2b(str(flag["WRONG"][t]).encode(),
-                    salt=os.urandom(16),
+            blake2s(str(flag["WRONG"][t]).encode(),
+                    salt=os.urandom(8),
                     digest_size=digest_size).hexdigest()
             for t in range(digest_size)
         ]
