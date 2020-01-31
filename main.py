@@ -16,6 +16,8 @@ from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, PicklePersistence, Updater)
 from telegram.ext.dispatcher import run_async
 from telegram.ext.filters import MergedFilter
+from telegram.utils.helpers import mention_markdown
+
 
 from utils import FullChatPermissions, get_chat_admins
 
@@ -255,7 +257,7 @@ def query(update, context):
             conf = config.get("NOT_KICK")
     context.bot.edit_message_text(
         text=conf.format(
-            user=f"[{user.full_name}](tg://user?id={user.id})",
+            user=mention_markdown(user.id, user.full_name),
             question=question,
             ans=answer,
         ),
@@ -297,8 +299,8 @@ def admin(update, context):
         kick(context, chat.id, user_id)
     context.bot.edit_message_text(
         text=conf.format(
-            admin=f"[{user.full_name}](tg://user?id={user.id})",
-            user=f"[{user_id}](tg://user?id={user_id})",
+            admin=mention_markdown(user.id, user.full_name),
+            user=mention_markdown(user_id, user_id),
         ),
         message_id=message.message_id,
         chat_id=chat.id,
