@@ -5,6 +5,7 @@ import logging
 import time
 import traceback
 
+import ruamel.yaml
 from telegram import ChatPermissions
 from telegram.ext.dispatcher import run_async
 
@@ -19,10 +20,13 @@ FullChatPermissions = ChatPermissions(
     can_pin_messages=True,
 )
 
-logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s",
-                    level=logging.INFO)
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("Telegram_Group_Easyauth")
+
+yaml = ruamel.yaml.YAML()
 
 
 class MWT(object):
@@ -64,15 +68,18 @@ class MWT(object):
 
 
 @MWT(timeout=60 * 60)
-def get_chat_admins(bot, chat_id):
-    """Returns a list of admin IDs for a given chat. Results are cached for 1 hour."""
-    return [admin.user.id for admin in bot.get_chat_administrators(chat_id)]
+def get_chat_admins(bot, chat_id, extra_user):
+    if extra_user is not None and isinstance(extra_user, int):
+        users = [extra_user]
+    else:
+        users = extra_user
+    admins = [admin.user.id for admin in bot.get_chat_administrators(chat_id)]
+    if users:
+        admins.extend(users)
+    return admins
 
 
 def collect_error(func):
-    '''
-        designed to fix a bug in the telegram library
-    '''
     def wrapped(*args, **kwargs):
         try:
             return func(*args, **kwargs)

@@ -8,26 +8,34 @@ import sys
 import time
 from hashlib import blake2s
 
-import ruamel.yaml
-from telegram import (ChatPermissions, InlineKeyboardButton,
-                      InlineKeyboardMarkup, ParseMode)
-from telegram.error import (BadRequest, ChatMigrated, NetworkError,
-                            TelegramError, TimedOut, Unauthorized)
-from telegram.ext import (CallbackQueryHandler, CommandHandler,
-                          ConversationHandler, Filters, MessageHandler,
-                          PicklePersistence, Updater)
+from telegram import (
+    ChatPermissions,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ParseMode,
+)
+from telegram.error import (
+    BadRequest,
+    ChatMigrated,
+    NetworkError,
+    TelegramError,
+    TimedOut,
+    Unauthorized,
+)
+from telegram.ext import (
+    CallbackQueryHandler,
+    CommandHandler,
+    ConversationHandler,
+    Filters,
+    MessageHandler,
+    PicklePersistence,
+    Updater,
+)
 from telegram.ext.dispatcher import run_async
 from telegram.ext.filters import MergedFilter
 from telegram.utils.helpers import mention_markdown
 
-from utils import FullChatPermissions, collect_error, get_chat_admins
-
-yaml = ruamel.yaml.YAML()
-
-logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s",
-                    level=logging.INFO)
-
-logger = logging.getLogger(__name__)
+from utils import FullChatPermissions, collect_error, get_chat_admins, logger, yaml
 
 
 def parse_callback(data):
@@ -57,10 +65,13 @@ def parse_callback(data):
         else:
             result = False
         user_id = int(data[2])
-        logger.info(
-            f"New admin parse callback:\nuser_id: {user_id}\nresult: {result}")
+        logger.info(f"New admin parse callback:\nuser_id: {user_id}\nresult: {result}")
         return result, user_id
-    elif data[0] in ["detail_question_private", "edit_question_private"]:
+    elif data[0] in [
+        "detail_question_private",
+        "edit_question_private",
+        "delete_question_private",
+    ]:
         number = int(data[1])
         logger.info(f"New private parse callback:\nresult: {number}")
         return number
@@ -72,8 +83,10 @@ def start_command(update, context):
     message = update.message
     chat = message.chat
     user = message.from_user
-    message.reply_text(config.get("START").format(chat=chat.id, user=user.id),
-                       parse_mode=ParseMode.MARKDOWN)
+    message.reply_text(
+        config.get("START").format(chat=chat.id, user=user.id),
+        parse_mode=ParseMode.MARKDOWN,
+    )
     logger.info(f"Current Jobs: {[t.name for t in context.job_queue.jobs()]}")
 
 
@@ -84,12 +97,11 @@ def error(update, context):
 
 def kick(context, chat_id, user_id):
     if context.bot.kick_chat_member(
-            chat_id=chat_id,
-            user_id=user_id,
-            until_date=int(time.time()) + config.get("BANTIME"),
+        chat_id=chat_id,
+        user_id=user_id,
+        until_date=int(time.time()) + config.get("BANTIME"),
     ):
-        logger.info(
-            f"Job kick: Successfully kicked user {user_id} at group {chat_id}")
+        logger.info(f"Job kick: Successfully kicked user {user_id} at group {chat_id}")
         return True
     else:
         logger.warning(
@@ -106,9 +118,7 @@ def kick_queue(context):
 
 def restore(context, chat_id, user_id):
     if context.bot.restrict_chat_member(
-            chat_id=chat_id,
-            user_id=user_id,
-            permissions=FullChatPermissions,
+        chat_id=chat_id, user_id=user_id, permissions=FullChatPermissions,
     ):
         logger.info(
             f"Job restore: Successfully restored user {user_id} at group {chat_id}"
@@ -149,7 +159,9 @@ def clean_queue(context):
 def newmem(update, context):
     message = update.message
     chat = message.chat
-    if message.from_user.id in get_chat_admins(context.bot, chat.id):
+    if message.from_user.id in get_chat_admins(
+        context.bot, chat.id, config.get("SUPER_ADMIN")
+    ):
         return
     for user in message.new_chat_members:
         if user.is_bot:
@@ -157,9 +169,9 @@ def newmem(update, context):
         num = random.randint(0, config.get("number") - 1)
         flag = config["CHALLENGE"][num]
         if context.bot.restrict_chat_member(
-                chat_id=chat.id,
-                user_id=user.id,
-                permissions=ChatPermissions(can_send_messages=False),
+            chat_id=chat.id,
+            user_id=user.id,
+            permissions=ChatPermissions(can_send_messages=False),
         ):
             logger.info(
                 f"New member: Successfully restricted user {user.id} at group {chat.id}"
@@ -168,44 +180,45 @@ def newmem(update, context):
             logger.warning(
                 f"New member: No enough permissions to restrict user {user.id} at group {chat.id}"
             )
-        buttons = [[
-            InlineKeyboardButton(
-                text=flag["ANSWER"],
-                callback_data=f"challenge|{user.id}|{num}|{flag['answer']}",
-            )
-        ]]
-        for t in range(len(flag["WRONG"])):
-            buttons.append([
+        buttons = [
+            [
                 InlineKeyboardButton(
-                    text=flag["WRONG"][t],
-                    callback_data=
-                    f"challenge|{user.id}|{num}|{flag['wrong'][t]}",
+                    flag["WRONG"][t],
+                    callback_data=f"challenge|{user.id}|{num}|{flag['wrong'][t]}",
                 )
-            ])
+            ]
+            for t in range(len(flag.get("WRONG")))
+        ]
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    flag.get("ANSWER"),
+                    callback_data=f"challenge|{user.id}|{num}|{flag.get('answer')}",
+                )
+            ]
+        )
         random.shuffle(buttons)
-        buttons.append([
-            InlineKeyboardButton(
-                text=config.get("PASS_BTN"),
-                callback_data=f"admin|pass|{user.id}",
-            ),
-            InlineKeyboardButton(
-                text=config.get("KICK_BTN"),
-                callback_data=f"admin|kick|{user.id}",
-            ),
-        ])
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    config.get("PASS_BTN"), callback_data=f"admin|pass|{user.id}",
+                ),
+                InlineKeyboardButton(
+                    config.get("KICK_BTN"), callback_data=f"admin|kick|{user.id}",
+                ),
+            ]
+        )
         question_message = message.reply_text(
-            config.get("GREET").format(question=flag["QUESTION"],
-                                       time=config.get("TIME")),
+            config.get("GREET").format(
+                question=flag.get("QUESTION"), time=config.get("TIME")
+            ),
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN,
         )
         updater.job_queue.run_once(
             kick_queue,
             config.get("TIME"),
-            context={
-                "chat_id": chat.id,
-                "user_id": user.id,
-            },
+            context={"chat_id": chat.id, "user_id": user.id,},
             name=f"{chat.id}|{user.id}|kick",
         )
         updater.job_queue.run_once(
@@ -238,24 +251,24 @@ def query(update, context):
     chat = message.chat
     user_id, result, question, answer = parse_callback(callback_query.data)
     if user.id != user_id:
-        context.bot.answer_callback_query(
-            text=config.get("OTHER"),
-            show_alert=True,
-            callback_query_id=callback_query.id,
+        callback_query.answer(
+            text=config.get("OTHER"), show_alert=True,
         )
         return
-    cqconf = (config.get("SUCCESS") if result else config.get("RETRY").format(
-        time=config.get("BANTIME")))
-    context.bot.answer_callback_query(
-        text=cqconf,
-        show_alert=True,
-        callback_query_id=callback_query.id,
+    cqconf = (
+        config.get("SUCCESS")
+        if result
+        else config.get("RETRY").format(time=config.get("BANTIME"))
+    )
+    callback_query.answer(
+        text=cqconf, show_alert=False if result else True,
     )
     if result:
         conf = config.get("PASS")
         restore(context, chat.id, user_id)
         for job in context.job_queue.get_jobs_by_name(
-                f"{chat.id}|{user.id}|clean_join"):
+            f"{chat.id}|{user.id}|clean_join"
+        ):
             job.schedule_removal()
     else:
         if kick(context, chat.id, user_id):
@@ -263,7 +276,7 @@ def query(update, context):
         else:
             conf = config.get("NOT_KICK")
     message.edit_text(
-        text=conf.format(
+        conf.format(
             user=mention_markdown(user.id, user.full_name),
             question=question,
             ans=answer,
@@ -280,30 +293,27 @@ def admin(update, context):
     user = callback_query.from_user
     message = callback_query.message
     chat = message.chat
-    if user.id not in get_chat_admins(context.bot, chat.id):
-        context.bot.answer_callback_query(
-            text=config.get("OTHER"),
-            show_alert=True,
-            callback_query_id=callback_query.id,
+    if user.id not in get_chat_admins(context.bot, chat.id, config.get("SUPER_ADMIN")):
+        callback_query.answer(
+            text=config.get("OTHER"), show_alert=True,
         )
         return
     result, user_id = parse_callback(callback_query.data)
     cqconf = config.get("PASS_BTN") if result else config.get("KICK_BTN")
     conf = config.get("ADMIN_PASS") if result else config.get("ADMIN_KICK")
-    context.bot.answer_callback_query(
-        text=cqconf,
-        show_alert=False,
-        callback_query_id=callback_query.id,
+    callback_query.answer(
+        text=cqconf, show_alert=False,
     )
     if result:
         restore(context, chat.id, user_id)
         for job in context.job_queue.get_jobs_by_name(
-                f"{chat.id}|{user.id}|clean_join"):
+            f"{chat.id}|{user.id}|clean_join"
+        ):
             job.schedule_removal()
     else:
         kick(context, chat.id, user_id)
     message.edit_text(
-        text=conf.format(
+        conf.format(
             admin=mention_markdown(user.id, user.full_name),
             user=mention_markdown(user_id, user_id),
         ),
@@ -337,20 +347,27 @@ def load_config():
     else:
         config = load_yaml()
     if not config.get("CHAT"):
-        logger.warning(
-            f"Config: CHAT is not set! Use /start to get one in chat.")
+        logger.warning(f"Config: CHAT is not set! Use /start to get one in chat.")
     for flag in config.get("CHALLENGE"):
         assert flag.get("QUESTION"), "No QUESTION tile for question"
-        assert flag.get("ANSWER"), f"No ANSWER tile for question: {flag.get('QUESTION')}"
+        assert flag.get(
+            "ANSWER"
+        ), f"No ANSWER tile for question: {flag.get('QUESTION')}"
         assert flag.get("WRONG"), f"No WRONG tile for question: {flag.get('QUESTION')}"
-        assert (digest_size := len(flag.get("WRONG"))) < 20, f"Too many tiles for WRONG for question: {flag.get('QUESTION')}"
-        flag["answer"] = blake2s(str(flag.get("ANSWER")).encode(),
-                                 salt=os.urandom(8),
-                                 digest_size=digest_size).hexdigest()
+        assert (
+            digest_size := len(flag.get("WRONG"))
+        ) < 20, f"Too many tiles for WRONG for question: {flag.get('QUESTION')}"
+        flag["answer"] = blake2s(
+            str(flag.get("ANSWER")).encode(),
+            salt=os.urandom(8),
+            digest_size=digest_size,
+        ).hexdigest()
         flag["wrong"] = [
-            blake2s(str(flag["WRONG"][t]).encode(),
-                    salt=os.urandom(8),
-                    digest_size=digest_size).hexdigest()
+            blake2s(
+                str(flag["WRONG"][t]).encode(),
+                salt=os.urandom(8),
+                digest_size=digest_size,
+            ).hexdigest()
             for t in range(digest_size)
         ]
     config["number"] = len(config.get("CHALLENGE"))
@@ -381,15 +398,12 @@ def reload_config(context):
     jobs = [t.name for t in context.job_queue.jobs()]
     global config
     if jobs:
-        context.job_queue.run_once(reload_config,
-                                   config.get("TIME"),
-                                   name="reload")
+        context.job_queue.run_once(reload_config, config.get("TIME"), name="reload")
         logger.info(f"Job reload: Waiting for {jobs}")
         return False
     else:
         config = load_config()
-        logger.info(
-            f"Job reload: Successfully reloaded {config.get('filename')}")
+        logger.info(f"Job reload: Successfully reloaded {config.get('filename')}")
         return True
 
 
@@ -397,34 +411,54 @@ def reload_config(context):
 def reload_command(update, context):
     message = update.message
     chat = message.chat
-    if message.from_user.id not in get_chat_admins(context.bot, chat.id):
+    user = message.from_user
+    if user.id not in get_chat_admins(context.bot, chat.id, config.get("SUPER_ADMIN")):
+        logger.info(f"Reload: User {user.id} is unauthorized, blocking")
+        message.reply_text(config.get("START_UNAUTHORIZED_PRIVATE"))
         return
-    message.reply_text(config.get("RELOAD").format(num=config.get("number"))
-                       if reload_config(context) else config.get("PENDING"),
-                       parse_mode=ParseMode.MARKDOWN)
+    message.reply_text(
+        config.get("RELOAD").format(num=config.get("number"))
+        if reload_config(context)
+        else config.get("PENDING"),
+    )
 
 
 @collect_error
 def start_private(update, context):
     message = update.message
     callback_query = update.callback_query
+    if callback_query:
+        callback_query.answer()
+        user = callback_query.from_user
+    else:
+        user = message.from_user
+    if user.id not in get_chat_admins(
+        context.bot, config.get("CHAT"), config.get("SUPER_ADMIN")
+    ):
+        logger.info(f"Private: User {user.id} is unauthorized, blocking")
+        message.reply_text(config.get("START_UNAUTHORIZED_PRIVATE"))
+        return ConversationHandler.END
     keyboard = [
         [
             InlineKeyboardButton(
-                text='添加新问题',
-                callback_data=f'edit_question_private|{config.get("number")}')
+                config.get("ADD_NEW_QUESTION_BTN"),
+                callback_data=f'edit_question_private|{config.get("number")}',
+            )
         ],
         [
-            InlineKeyboardButton(text='查看所有问题',
-                                 callback_data='list_question_private')
+            InlineKeyboardButton(
+                config.get("LIST_ALL_QUESTION_BTN"),
+                callback_data="list_question_private",
+            )
         ],
     ]
     markup = InlineKeyboardMarkup(keyboard)
     if callback_query:
-        callback_query.edit_message_text(text="这里可以查看和修改题目，请选择对应操作。",
-                                         reply_markup=markup)
+        callback_query.edit_message_text(
+            config.get("START_PRIVATE"), reply_markup=markup
+        )
     else:
-        message.reply_text("这里可以查看和修改题目，请选择对应操作。", reply_markup=markup)
+        message.reply_text(config.get("START_PRIVATE"), reply_markup=markup)
     logger.info("Private: Start")
     logger.debug(callback_query)
     return CHOOSING
@@ -433,14 +467,18 @@ def start_private(update, context):
 @collect_error
 def list_question_private(update, context):
     callback_query = update.callback_query
-    keyboard = [[
-        InlineKeyboardButton(text=flag["QUESTION"],
-                             callback_data=f"detail_question_private|{num}")
-    ] for (num, flag) in enumerate(config["CHALLENGE"])]
-    keyboard.insert(0,
-                    [InlineKeyboardButton(text="<- 返回", callback_data="back")])
+    callback_query.answer()
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                flag.get("QUESTION"), callback_data=f"detail_question_private|{num}"
+            )
+        ]
+        for (num, flag) in enumerate(config.get("CHALLENGE"))
+    ]
+    keyboard.insert(0, [InlineKeyboardButton(config.get("BACK"), callback_data="back")])
     markup = InlineKeyboardMarkup(keyboard)
-    callback_query.edit_message_text("现有问题列表：", reply_markup=markup)
+    callback_query.edit_message_text(config.get("LIST_PRIVATE"), reply_markup=markup)
     logger.info("Private: List question")
     logger.debug(callback_query)
     return LIST_VIEW
@@ -449,21 +487,65 @@ def list_question_private(update, context):
 @collect_error
 def detail_question_private(update, context):
     callback_query = update.callback_query
+    callback_query.answer()
     num = parse_callback(callback_query.data)
     keyboard = [
-        [InlineKeyboardButton(text="<- 返回", callback_data="back")],
+        [InlineKeyboardButton(config.get("BACK"), callback_data="back")],
         [
-            InlineKeyboardButton(text="编辑问题",
-                                 callback_data=f"edit_question_private|{num}")
+            InlineKeyboardButton(
+                config.get("EDIT_QUESTION_BTN"),
+                callback_data=f"edit_question_private|{num}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                config.get("DELETE_QUESTION_BTN"),
+                callback_data=f"delete_question_private|{num}",
+            )
         ],
     ]
     markup = InlineKeyboardMarkup(keyboard)
     flag = config["CHALLENGE"][num]
     callback_query.edit_message_text(
-        f"问题：{flag.get('QUESTION')}\n正确答案：{flag.get('ANSWER')}\n错误答案：{flag.get('WRONG')}",
-        reply_markup=markup)
+        config.get("DETAIL_QUESTION_PRIVATE").format(
+            question=flag.get("QUESTION"),
+            ans=flag.get("ANSWER"),
+            wrong="\n".join(flag.get("WRONG")),
+        ),
+        reply_markup=markup,
+    )
     logger.info("Private: Detail question")
     logger.debug(callback_query)
+    return DETAIL_VIEW
+
+
+@run_async
+def save_private(context, callback_query):
+    save_config(config, config.get("filename"))
+    context.chat_data.clear()
+    keyboard = [
+        [InlineKeyboardButton(config.get("BACK"), callback_data="back")],
+    ]
+    markup = InlineKeyboardMarkup(keyboard)
+    callback_query.edit_message_text(
+        config.get("RELOAD").format(num=config.get("number"))
+        if reload_config(context)
+        else config.get("PENDING"),
+        reply_markup=markup,
+    )
+    logger.info(f"Private: Saved config")
+    logger.debug(config)
+
+
+@collect_error
+def delete_question_private(update, context):
+    callback_query = update.callback_query
+    callback_query.answer()
+    callback_query.edit_message_text(config.get("DELETING_PRIVATE"))
+    num = parse_callback(callback_query.data)
+    tile = config["CHALLENGE"].pop(num)
+    logger.info(f"Private: Delete question {tile}")
+    save_private(context, callback_query)
     return DETAIL_VIEW
 
 
@@ -472,49 +554,30 @@ def edit_question_private(update, context):
     message = update.message
     callback_query = update.callback_query
     if callback_query:
+        text = "Begin"
+        callback_query.answer()
         index = parse_callback(callback_query.data)
         context.chat_data.clear()
         context.chat_data["index"] = index
-        callback_query.edit_message_text(text=f"开始编辑第 {index+1} 个问题，请填写问题：")
-        text = "Begin"
-    else:
+        callback_query.edit_message_text(
+            config.get("EDIT_QUESTION_PRIVATE").format(num=index + 1)
+        )
+    elif message:
         text = message.text
         if not context.chat_data.get("QUESTION"):
             context.chat_data["QUESTION"] = text
-            return_text = f"问题： {text}\n请填写正确答案："
+            return_text = config.get("EDIT_ANSWER_PRIVATE").format(text=text)
         elif not context.chat_data.get("ANSWER"):
             context.chat_data["ANSWER"] = text
-            return_text = f"正确答案： {text}\n请填写错误答案："
+            return_text = config.get("EDIT_WRONG_PRIVATE").format(text=text)
         else:
             if not context.chat_data.get("WRONG"):
                 context.chat_data["WRONG"] = list()
             context.chat_data["WRONG"].append(text)
-            return_text = f"错误答案： {text}\n可继续填写，并使用 /finish 结束。"
-        message.reply_text(f"正在编辑：\n{return_text}")
+            return_text = config.get("EDIT_MORE_WRONG_PRIVATE").format(text=text)
+        message.reply_text(config.get("EDIT_PRIVATE").format(text=return_text))
         logger.info(f"Private: Edit question {text}")
     return QUESTION_EDIT
-
-
-@collect_error
-def save_question_private(update, context):
-    callback_query = update.callback_query
-    callback_query.edit_message_text("正在保存")
-    config["CHALLENGE"].append(context.chat_data)
-    logger.info(f"Private: Saving question {context.chat_data}")
-    save_config(config, config.get("filename"))
-    context.chat_data.clear()
-    keyboard = [
-        [InlineKeyboardButton(text="<- 返回", callback_data="back")],
-    ]
-    markup = InlineKeyboardMarkup(keyboard)
-    callback_query.edit_message_text(
-        config.get("RELOAD").format(num=config.get("number"))
-        if reload_config(context) else config.get("PENDING"),
-        reply_markup=markup,
-        parse_mode=ParseMode.MARKDOWN)
-    logger.info(f"Private: Saved config")
-    logger.debug(config)
-    return DETAIL_VIEW
 
 
 @collect_error
@@ -522,22 +585,45 @@ def finish_edit_private(update, context):
     message = update.message
     if not context.chat_data.get("WRONG"):
         logger.info(context.chat_data)
-        message.reply_text("错误答案数量不足。")
+        message.reply_text(config.get("EDIT_UNFINISH_PRIVATE"))
         return QUESTION_EDIT
     index = context.chat_data.get("index")
     keyboard = [
-        [InlineKeyboardButton(text="保存并重载配置", callback_data="save")],
+        [InlineKeyboardButton(config.get("SAVE_QUESTION_BTN"), callback_data="save")],
         [
             InlineKeyboardButton(
-                text="重新编辑问题", callback_data=f"edit_question_private|{index}")
+                config.get("REEDIT_QUESTION_BTN"),
+                callback_data=f"edit_question_private|{index}",
+            )
         ],
     ]
     markup = InlineKeyboardMarkup(keyboard)
     message.reply_text(
-        f"编辑问题 {index+1} 已结束。\n问题：{context.chat_data.get('QUESTION')}\n答案：{context.chat_data.get('ANSWER')}\n错误答案：{context.chat_data.get('WRONG')}",
-        reply_markup=markup)
+        "\n".join(
+            [
+                config.get("EDIT_FINISH_PRIVATE").format(num=index + 1),
+                config.get("DETAIL_QUESTION_PRIVATE").format(
+                    question=context.chat_data.get("QUESTION"),
+                    ans=context.chat_data.get("ANSWER"),
+                    wrong="\n".join(context.chat_data.get("WRONG")),
+                ),
+            ]
+        ),
+        reply_markup=markup,
+    )
     context.chat_data.pop("index")
     logger.info(f"Private: Finish edit {context.chat_data}")
+    return DETAIL_VIEW
+
+
+@collect_error
+def save_question_private(update, context):
+    callback_query = update.callback_query
+    callback_query.answer()
+    callback_query.edit_message_text(config.get("SAVING_PRIVATE"))
+    config["CHALLENGE"].append(context.chat_data)
+    logger.info(f"Private: Saving question {context.chat_data}")
+    save_private(context, callback_query)
     return DETAIL_VIEW
 
 
@@ -545,7 +631,7 @@ def finish_edit_private(update, context):
 def cancel_private(update, context):
     message = update.message
     context.chat_data.clear()
-    message.reply_text("已取消所有操作。")
+    message.reply_text(config.get("CANCEL_PRIVATE"))
     logger.info(f"Private: Cancel")
     return ConversationHandler.END
 
@@ -553,57 +639,63 @@ def cancel_private(update, context):
 if __name__ == "__main__":
     config = load_config()
     save_config(config)
-    pp = PicklePersistence(filename=f"{config.get('filename')}.pickle",
-                           on_flush=True)
+    pp = PicklePersistence(filename=f"{config.get('filename')}.pickle", on_flush=True)
     updater = Updater(config.get("TOKEN"), persistence=pp, use_context=True)
-    chatfilter = Filters.chat(
-        config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
-        CommandHandler("start", start_command, filters=Filters.group))
-    updater.dispatcher.add_handler(
-        CommandHandler("reload", reload_command, filters=chatfilter))
+        CommandHandler("start", start_command, filters=Filters.group)
+    )
+    updater.dispatcher.add_handler(CommandHandler("reload", reload_command))
+    chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
         MessageHandler(
-            MergedFilter(Filters.status_update.new_chat_members,
-                         and_filter=chatfilter), newmem))
-    updater.dispatcher.add_handler(
-        CallbackQueryHandler(query, pattern=r"^challenge\|"))
-    updater.dispatcher.add_handler(
-        CallbackQueryHandler(admin, pattern=r"^admin\|"))
-
-    CHOOSING, LIST_VIEW, DETAIL_VIEW, QUESTION_EDIT = range(4)
-    conv_handler = ConversationHandler(
-        entry_points=[
-            CommandHandler("start", start_private, filters=Filters.private)
-        ],
-        states={
-            CHOOSING: [
-                CallbackQueryHandler(edit_question_private,
-                                     pattern=r"^edit_question_private"),
-                CallbackQueryHandler(list_question_private,
-                                     pattern=r"^list_question_private"),
+            MergedFilter(Filters.status_update.new_chat_members, and_filter=chatfilter),
+            newmem,
+        )
+    )
+    updater.dispatcher.add_handler(CallbackQueryHandler(query, pattern=r"^challenge\|"))
+    updater.dispatcher.add_handler(CallbackQueryHandler(admin, pattern=r"^admin\|"))
+    if config.get("CHAT"):
+        CHOOSING, LIST_VIEW, DETAIL_VIEW, QUESTION_EDIT = range(4)
+        conv_handler = ConversationHandler(
+            entry_points=[
+                CommandHandler("start", start_private, filters=Filters.private)
             ],
-            LIST_VIEW: [
-                CallbackQueryHandler(start_private, pattern=r"^back$"),
-                CallbackQueryHandler(detail_question_private,
-                                     pattern=r"^detail_question_private")
-            ],
-            DETAIL_VIEW: [
-                CallbackQueryHandler(save_question_private, pattern=r"^save$"),
-                CallbackQueryHandler(list_question_private, pattern=r"^back$"),
-                CallbackQueryHandler(edit_question_private,
-                                     pattern=r"^edit_question_private")
-            ],
-            QUESTION_EDIT: [
-                MessageHandler(Filters.text, edit_question_private),
-                CommandHandler("finish", finish_edit_private)
-            ],
-        },
-        fallbacks=[CommandHandler("cancel", cancel_private)],
-        name="setting",
-        allow_reentry=True,
-        persistent=True)
-    updater.dispatcher.add_handler(conv_handler)
+            states={
+                CHOOSING: [
+                    CallbackQueryHandler(
+                        edit_question_private, pattern=r"^edit_question_private"
+                    ),
+                    CallbackQueryHandler(
+                        list_question_private, pattern=r"^list_question_private"
+                    ),
+                ],
+                LIST_VIEW: [
+                    CallbackQueryHandler(start_private, pattern=r"^back$"),
+                    CallbackQueryHandler(
+                        detail_question_private, pattern=r"^detail_question_private"
+                    ),
+                ],
+                DETAIL_VIEW: [
+                    CallbackQueryHandler(save_question_private, pattern=r"^save$"),
+                    CallbackQueryHandler(list_question_private, pattern=r"^back$"),
+                    CallbackQueryHandler(
+                        delete_question_private, pattern=r"^delete_question_private"
+                    ),
+                    CallbackQueryHandler(
+                        edit_question_private, pattern=r"^edit_question_private"
+                    ),
+                ],
+                QUESTION_EDIT: [
+                    MessageHandler(Filters.text, edit_question_private),
+                    CommandHandler("finish", finish_edit_private),
+                ],
+            },
+            fallbacks=[CommandHandler("cancel", cancel_private)],
+            name="setting",
+            allow_reentry=True,
+            persistent=True,
+        )
+        updater.dispatcher.add_handler(conv_handler)
     updater.dispatcher.add_error_handler(error)
     updater.start_polling()
     updater.idle()
