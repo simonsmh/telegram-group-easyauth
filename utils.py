@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # Source: http://code.activestate.com/recipes/325905-memoize-decorator-with-timeout/#c1
 
+import logging
 import time
-from telegram.ext.dispatcher import run_async
+import traceback
+
 from telegram import ChatPermissions
+from telegram.ext.dispatcher import run_async
 
 FullChatPermissions = ChatPermissions(
     can_send_messages=True,
@@ -15,6 +18,11 @@ FullChatPermissions = ChatPermissions(
     can_invite_users=True,
     can_pin_messages=True,
 )
+
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s",
+                    level=logging.INFO)
+
+logger = logging.getLogger(__name__)
 
 
 class MWT(object):
@@ -61,8 +69,14 @@ def get_chat_admins(bot, chat_id):
     return [admin.user.id for admin in bot.get_chat_administrators(chat_id)]
 
 
-# class Question:
-#     def __init__(self, question, answer, number):
-#         self.question = question
-#         self.answer = answer
-#         self.number = number
+def collect_error(func):
+    '''
+        designed to fix a bug in the telegram library
+    '''
+    def wrapped(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            logger.info(traceback.format_exc())
+
+    return wrapped
