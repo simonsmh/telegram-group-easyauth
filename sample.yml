@@ -88,7 +88,10 @@ SAVE_QUESTION_BTN: 保存并重载配置
 REEDIT_QUESTION_BTN: 重新编辑问题
 
 #第一层文本
-START_PRIVATE: 这里可以查看和修改题目，请选择对应操作。
+START_PRIVATE: |
+  此 Bot 正在为群组 {link} 工作。
+  这里可以重新加载、查看并删改题目，请选择对应操作。
+  使用 /cancel 退出。
 
 START_UNAUTHORIZED_PRIVATE: 检测到未经授权的请求，将上报。
 
@@ -124,7 +127,7 @@ EDIT_FINISH_PRIVATE: 编辑问题 {num} 已结束。
 
 CANCEL_PRIVATE: 已取消所有操作。
 
-SAVEING_PRIVATE: 正在保存...
+SAVING_PRIVATE: 正在保存...
 
 DELETING_PRIVATE: 正在删除...
 

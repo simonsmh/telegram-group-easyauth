@@ -439,6 +439,7 @@ def start_private(update, context):
         message.reply_text(config.get("START_UNAUTHORIZED_PRIVATE"))
         return ConversationHandler.END
     keyboard = [
+        [InlineKeyboardButton(config.get("SAVE_QUESTION_BTN"), callback_data="save")],
         [
             InlineKeyboardButton(
                 config.get("ADD_NEW_QUESTION_BTN"),
@@ -455,10 +456,14 @@ def start_private(update, context):
     markup = InlineKeyboardMarkup(keyboard)
     if callback_query:
         callback_query.edit_message_text(
-            config.get("START_PRIVATE"), reply_markup=markup
+            config.get("START_PRIVATE").format(link=config.get("CHAT")),
+            reply_markup=markup,
         )
     else:
-        message.reply_text(config.get("START_PRIVATE"), reply_markup=markup)
+        message.reply_text(
+            config.get("START_PRIVATE").format(link=config.get("CHAT")),
+            reply_markup=markup,
+        )
     logger.info("Private: Start")
     logger.debug(callback_query)
     return CHOOSING
@@ -621,8 +626,9 @@ def save_question_private(update, context):
     callback_query = update.callback_query
     callback_query.answer()
     callback_query.edit_message_text(config.get("SAVING_PRIVATE"))
-    config["CHALLENGE"].append(context.chat_data)
-    logger.info(f"Private: Saving question {context.chat_data}")
+    if context.chat_data:
+        config["CHALLENGE"].append(context.chat_data)
+        logger.info(f"Private: Saving question {context.chat_data}")
     save_private(context, callback_query)
     return DETAIL_VIEW
 
@@ -641,11 +647,13 @@ if __name__ == "__main__":
     save_config(config)
     pp = PicklePersistence(filename=f"{config.get('filename')}.pickle", on_flush=True)
     updater = Updater(config.get("TOKEN"), persistence=pp, use_context=True)
+    chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
         CommandHandler("start", start_command, filters=Filters.group)
     )
-    updater.dispatcher.add_handler(CommandHandler("reload", reload_command))
-    chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
+    updater.dispatcher.add_handler(
+        CommandHandler("reload", reload_command, filters=chatfilter)
+    )
     updater.dispatcher.add_handler(
         MessageHandler(
             MergedFilter(Filters.status_update.new_chat_members, and_filter=chatfilter),
@@ -662,6 +670,7 @@ if __name__ == "__main__":
             ],
             states={
                 CHOOSING: [
+                    CallbackQueryHandler(save_question_private, pattern=r"^save$"),
                     CallbackQueryHandler(
                         edit_question_private, pattern=r"^edit_question_private"
                     ),
