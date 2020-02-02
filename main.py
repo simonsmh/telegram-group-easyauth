@@ -347,16 +347,20 @@ def load_config():
     else:
         config = load_yaml()
     if not config.get("CHAT"):
+        assert isinstance(config.get("CHAT"), int), "Config: CHAT Must be ID, not username."
+    else:
         logger.warning(f"Config: CHAT is not set! Use /start to get one in chat.")
+    if config.get("SUPER_ADMIN"):
+        assert isinstance(config.get("SUPER_ADMIN"), int), "Config: SUPER_ADMIN Must be ID, not username."
     for flag in config.get("CHALLENGE"):
-        assert flag.get("QUESTION"), "No QUESTION tile for question"
+        assert flag.get("QUESTION"), "Config: No QUESTION tile for question."
         assert flag.get(
             "ANSWER"
-        ), f"No ANSWER tile for question: {flag.get('QUESTION')}"
-        assert flag.get("WRONG"), f"No WRONG tile for question: {flag.get('QUESTION')}"
+        ), f"Config: No ANSWER tile for question: {flag.get('QUESTION')}"
+        assert flag.get("WRONG"), f"Config: No WRONG tile for question: {flag.get('QUESTION')}"
         assert (
             digest_size := len(flag.get("WRONG"))
-        ) < 20, f"Too many tiles for WRONG for question: {flag.get('QUESTION')}"
+        ) < 20, f"Config: Too many tiles for WRONG for question: {flag.get('QUESTION')}"
         flag["answer"] = blake2s(
             str(flag.get("ANSWER")).encode(),
             salt=os.urandom(8),
