@@ -346,7 +346,7 @@ def load_config():
         config = load_yaml(filename)
     else:
         config = load_yaml()
-    if not config.get("CHAT"):
+    if config.get("CHAT"):
         assert isinstance(config.get("CHAT"), int), "Config: CHAT Must be ID, not username."
     else:
         logger.warning(f"Config: CHAT is not set! Use /start to get one in chat.")
