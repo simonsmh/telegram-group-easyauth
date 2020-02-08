@@ -354,13 +354,14 @@ def load_config():
         assert isinstance(config.get("SUPER_ADMIN"), int), "Config: SUPER_ADMIN Must be ID, not username."
     for flag in config.get("CHALLENGE"):
         assert flag.get("QUESTION"), "Config: No QUESTION tile for question."
-        assert flag.get(
-            "ANSWER"
-        ), f"Config: No ANSWER tile for question: {flag.get('QUESTION')}"
+        assert isinstance(flag.get("QUESTION"), str), f"Config: QUESTION {flag.get('QUESTION')} should be string object."
+        assert flag.get("ANSWER"), f"Config: No ANSWER tile for question: {flag.get('QUESTION')}"
+        assert isinstance(flag.get("ANSWER"), str), f"Config: ANSWER {flag.get('ANSWER')} should be string object for question: {flag.get('QUESTION')}"
         assert flag.get("WRONG"), f"Config: No WRONG tile for question: {flag.get('QUESTION')}"
         assert (
             digest_size := len(flag.get("WRONG"))
         ) < 20, f"Config: Too many tiles for WRONG for question: {flag.get('QUESTION')}"
+        assert all(isinstance(u, str) for u in flag.get("WRONG")), f"Config: WRONG {flag.get('WRONG')} should all be string object for question: {flag.get('QUESTION')}"
         flag["answer"] = blake2s(
             str(flag.get("ANSWER")).encode(),
             salt=os.urandom(8),
