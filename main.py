@@ -277,7 +277,7 @@ def query(update, context):
             conf = config.get("NOT_KICK")
     message.edit_text(
         conf.format(
-            user=mention_markdown(user.id, user.full_name),
+            user=user.mention_markdown(),
             question=question,
             ans=answer,
         ),
@@ -314,8 +314,8 @@ def admin(update, context):
         kick(context, chat.id, user_id)
     message.edit_text(
         conf.format(
-            admin=mention_markdown(user.id, user.full_name),
-            user=mention_markdown(user_id, user_id),
+            admin=user.mention_markdown(),
+            user=mention_markdown(user_id, str(user_id)),
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
