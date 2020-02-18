@@ -171,6 +171,7 @@ def load_config():
         ), "Config: SUPER_ADMIN Must be ID, not username."
     assert config.get("TIME"), "Config: TIME Does not set"
     assert config.get("BANTIME"), "Config: BANTIME Does not set"
+    assert config.get("QUIZTIME"), "Config: QUIZTIME Does not set"
     assert config.get("START"), "Config: START Does not set"
     assert config.get("GREET"), "Config: GREET Does not set"
     assert config.get("SUCCESS"), "Config: SUCCESS Does not set"
@@ -248,7 +249,7 @@ def save_config(config, name=None):
 def reload_config(context):
     for job in context.job_queue.get_jobs_by_name("reload"):
         job.schedule_removal()
-    jobs = [t.name for t in context.job_queue.jobs()]
+    jobs = [t.name for t in context.job_queue.jobs() if "close_poll" not in t.name]
     if jobs:
         context.job_queue.run_once(
             reload_config, context.bot_data.get("config").get("TIME"), name="reload"
