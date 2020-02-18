@@ -38,22 +38,41 @@ from telegram.utils.helpers import mention_markdown
 from utils import FullChatPermissions, collect_error, get_chat_admins, logger, yaml
 
 
-def parse_callback(data):
+def parse_callback(context, data):
     data = data.split("|")
     print(data)
     if data[0] == "challenge":
         user_id = int(data[1])
         number = int(data[2])
         answer_encode = data[3]
-        question = config["CHALLENGE"][number]["QUESTION"]
-        if answer_encode == config["CHALLENGE"][number]["answer"]:
+        question = (
+            context.bot_data.get("config").get("CHALLENGE")[number].get("QUESTION")
+        )
+        if answer_encode == context.bot_data.get("config").get("CHALLENGE")[number].get(
+            "answer"
+        ):
             result = True
-            answer = config["CHALLENGE"][number]["ANSWER"]
+            answer = (
+                context.bot_data.get("config").get("CHALLENGE")[number].get("ANSWER")
+            )
         else:
             result = False
-            for t in range(len(config["CHALLENGE"][number]["wrong"])):
-                if answer_encode == config["CHALLENGE"][number]["wrong"][t]:
-                    answer = config["CHALLENGE"][number]["WRONG"][t]
+            for t in range(
+                len(
+                    context.bot_data.get("config").get("CHALLENGE")[number].get("wrong")
+                )
+            ):
+                if (
+                    answer_encode
+                    == context.bot_data.get("config")
+                    .get("CHALLENGE")[number]
+                    .get("wrong")[t]
+                ):
+                    answer = (
+                        context.bot_data.get("config")
+                        .get("CHALLENGE")[number]
+                        .get("WRONG")[t]
+                    )
                     break
         logger.info(
             f"New challenge parse callback:\nuser_id: {user_id}\nresult: {result}\nquestion: {question}\nanswer: {answer}"
@@ -84,7 +103,7 @@ def start_command(update, context):
     chat = message.chat
     user = message.from_user
     message.reply_text(
-        config.get("START").format(chat=chat.id, user=user.id),
+        context.bot_data.get("config").get("START").format(chat=chat.id, user=user.id),
         parse_mode=ParseMode.MARKDOWN,
     )
     logger.info(f"Current Jobs: {[t.name for t in context.job_queue.jobs()]}")
@@ -99,7 +118,7 @@ def kick(context, chat_id, user_id):
     if context.bot.kick_chat_member(
         chat_id=chat_id,
         user_id=user_id,
-        until_date=int(time.time()) + config.get("BANTIME"),
+        until_date=int(time.time()) + context.bot_data.get("config").get("BANTIME"),
     ):
         logger.info(f"Job kick: Successfully kicked user {user_id} at group {chat_id}")
         return True
@@ -113,7 +132,7 @@ def kick(context, chat_id, user_id):
 @run_async
 def kick_queue(context):
     job = context.job
-    kick(context, job.context["chat_id"], job.context["user_id"])
+    kick(context, job.context.get("chat_id"), job.context.get("user_id"))
 
 
 def restore(context, chat_id, user_id):
@@ -131,27 +150,27 @@ def restore(context, chat_id, user_id):
         return False
 
 
-def clean(context, chat_id, user_id, message_id):
-    if context.bot.delete_message(chat_id=chat_id, message_id=message_id):
-        logger.info(
-            f"Job clean: Successfully delete message {message_id} from {user_id} at group {chat_id}"
-        )
-        return True
-    else:
-        logger.warning(
-            f"Job clean: No enough permissions to delete message {message_id} from {user_id} at group {chat_id}"
-        )
-        return False
-
-
 @run_async
 def clean_queue(context):
     job = context.job
+
+    def clean(context, chat_id, user_id, message_id):
+        if context.bot.delete_message(chat_id=chat_id, message_id=message_id):
+            logger.info(
+                f"Job clean: Successfully delete message {message_id} from {user_id} at group {chat_id}"
+            )
+            return True
+        else:
+            logger.warning(
+                f"Job clean: No enough permissions to delete message {message_id} from {user_id} at group {chat_id}"
+            )
+            return False
+
     clean(
         context,
-        job.context["chat_id"],
-        job.context["user_id"],
-        job.context["message_id"],
+        job.context.get("chat_id"),
+        job.context.get("user_id"),
+        job.context.get("message_id"),
     )
 
 
@@ -160,14 +179,14 @@ def newmem(update, context):
     message = update.message
     chat = message.chat
     if message.from_user.id in get_chat_admins(
-        context.bot, chat.id, config.get("SUPER_ADMIN")
+        context.bot, chat.id, context.bot_data.get("config").get("SUPER_ADMIN")
     ):
         return
     for user in message.new_chat_members:
         if user.is_bot:
             continue
-        num = random.randint(0, config.get("number") - 1)
-        flag = config["CHALLENGE"][num]
+        num = random.randint(0, context.bot_data.get("config").get("number") - 1)
+        flag = context.bot_data.get("config").get("CHALLENGE")[num]
         if context.bot.restrict_chat_member(
             chat_id=chat.id,
             user_id=user.id,
@@ -183,8 +202,8 @@ def newmem(update, context):
         buttons = [
             [
                 InlineKeyboardButton(
-                    flag["WRONG"][t],
-                    callback_data=f"challenge|{user.id}|{num}|{flag['wrong'][t]}",
+                    flag.get("WRONG")[t],
+                    callback_data=f"challenge|{user.id}|{num}|{flag.get('wrong')[t]}",
                 )
             ]
             for t in range(len(flag.get("WRONG")))
@@ -201,29 +220,34 @@ def newmem(update, context):
         buttons.append(
             [
                 InlineKeyboardButton(
-                    config.get("PASS_BTN"), callback_data=f"admin|pass|{user.id}",
+                    context.bot_data.get("config").get("PASS_BTN"),
+                    callback_data=f"admin|pass|{user.id}",
                 ),
                 InlineKeyboardButton(
-                    config.get("KICK_BTN"), callback_data=f"admin|kick|{user.id}",
+                    context.bot_data.get("config").get("KICK_BTN"),
+                    callback_data=f"admin|kick|{user.id}",
                 ),
             ]
         )
         question_message = message.reply_text(
-            config.get("GREET").format(
-                question=flag.get("QUESTION"), time=config.get("TIME")
+            context.bot_data.get("config")
+            .get("GREET")
+            .format(
+                question=flag.get("QUESTION"),
+                time=context.bot_data.get("config").get("TIME"),
             ),
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN,
         )
-        updater.job_queue.run_once(
+        context.job_queue.run_once(
             kick_queue,
-            config.get("TIME"),
+            context.bot_data.get("config").get("TIME"),
             context={"chat_id": chat.id, "user_id": user.id,},
             name=f"{chat.id}|{user.id}|kick",
         )
-        updater.job_queue.run_once(
+        context.job_queue.run_once(
             clean_queue,
-            config.get("TIME"),
+            context.bot_data.get("config").get("TIME"),
             context={
                 "chat_id": chat.id,
                 "user_id": user.id,
@@ -231,9 +255,9 @@ def newmem(update, context):
             },
             name=f"{chat.id}|{user.id}|clean_join",
         )
-        updater.job_queue.run_once(
+        context.job_queue.run_once(
             clean_queue,
-            config.get("TIME"),
+            context.bot_data.get("config").get("TIME"),
             context={
                 "chat_id": chat.id,
                 "user_id": user.id,
@@ -249,22 +273,24 @@ def query(update, context):
     user = callback_query.from_user
     message = callback_query.message
     chat = message.chat
-    user_id, result, question, answer = parse_callback(callback_query.data)
+    user_id, result, question, answer = parse_callback(context, callback_query.data)
     if user.id != user_id:
         callback_query.answer(
-            text=config.get("OTHER"), show_alert=True,
+            text=context.bot_data.get("config").get("OTHER"), show_alert=True,
         )
         return
     cqconf = (
-        config.get("SUCCESS")
+        context.bot_data.get("config").get("SUCCESS")
         if result
-        else config.get("RETRY").format(time=config.get("BANTIME"))
+        else context.bot_data.get("config")
+        .get("RETRY")
+        .format(time=context.bot_data.get("config").get("BANTIME"))
     )
     callback_query.answer(
         text=cqconf, show_alert=False if result else True,
     )
     if result:
-        conf = config.get("PASS")
+        conf = context.bot_data.get("config").get("PASS")
         restore(context, chat.id, user_id)
         for job in context.job_queue.get_jobs_by_name(
             f"{chat.id}|{user.id}|clean_join"
@@ -272,15 +298,11 @@ def query(update, context):
             job.schedule_removal()
     else:
         if kick(context, chat.id, user_id):
-            conf = config.get("KICK")
+            conf = context.bot_data.get("config").get("KICK")
         else:
-            conf = config.get("NOT_KICK")
+            conf = context.bot_data.get("config").get("NOT_KICK")
     message.edit_text(
-        conf.format(
-            user=user.mention_markdown(),
-            question=question,
-            ans=answer,
-        ),
+        conf.format(user=user.mention_markdown(), question=question, ans=answer,),
         parse_mode=ParseMode.MARKDOWN,
     )
     for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
@@ -293,14 +315,24 @@ def admin(update, context):
     user = callback_query.from_user
     message = callback_query.message
     chat = message.chat
-    if user.id not in get_chat_admins(context.bot, chat.id, config.get("SUPER_ADMIN")):
+    if user.id not in get_chat_admins(
+        context.bot, chat.id, context.bot_data.get("config").get("SUPER_ADMIN")
+    ):
         callback_query.answer(
-            text=config.get("OTHER"), show_alert=True,
+            text=context.bot_data.get("config").get("OTHER"), show_alert=True,
         )
         return
-    result, user_id = parse_callback(callback_query.data)
-    cqconf = config.get("PASS_BTN") if result else config.get("KICK_BTN")
-    conf = config.get("ADMIN_PASS") if result else config.get("ADMIN_KICK")
+    result, user_id = parse_callback(context, callback_query.data)
+    cqconf = (
+        context.bot_data.get("config").get("PASS_BTN")
+        if result
+        else context.bot_data.get("config").get("KICK_BTN")
+    )
+    conf = (
+        context.bot_data.get("config").get("ADMIN_PASS")
+        if result
+        else context.bot_data.get("config").get("ADMIN_KICK")
+    )
     callback_query.answer(
         text=cqconf, show_alert=False,
     )
@@ -314,8 +346,7 @@ def admin(update, context):
         kick(context, chat.id, user_id)
     message.edit_text(
         conf.format(
-            admin=user.mention_markdown(),
-            user=mention_markdown(user_id, str(user_id)),
+            admin=user.mention_markdown(), user=mention_markdown(user_id, str(user_id)),
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -336,7 +367,7 @@ def load_yaml(filename="config.yml"):
             logger.exception(f"Cannot find {filename}.")
             sys.exit(1)
     logger.info(f"Yaml: Loaded {filename}")
-    config["filename"] = filename
+    config.insert(0, "filename", filename)
     return config
 
 
@@ -347,35 +378,57 @@ def load_config():
     else:
         config = load_yaml()
     if config.get("CHAT"):
-        assert isinstance(config.get("CHAT"), int), "Config: CHAT Must be ID, not username."
+        assert isinstance(
+            config.get("CHAT"), int
+        ), "Config: CHAT Must be ID, not username."
     else:
         logger.warning(f"Config: CHAT is not set! Use /start to get one in chat.")
     if config.get("SUPER_ADMIN"):
-        assert isinstance(config.get("SUPER_ADMIN"), int), "Config: SUPER_ADMIN Must be ID, not username."
+        assert isinstance(
+            config.get("SUPER_ADMIN"), int
+        ), "Config: SUPER_ADMIN Must be ID, not username."
     for flag in config.get("CHALLENGE"):
         assert flag.get("QUESTION"), "Config: No QUESTION tile for question."
-        assert isinstance(flag.get("QUESTION"), str), f"Config: QUESTION {flag.get('QUESTION')} should be string object."
-        assert flag.get("ANSWER"), f"Config: No ANSWER tile for question: {flag.get('QUESTION')}"
-        assert isinstance(flag.get("ANSWER"), str), f"Config: ANSWER {flag.get('ANSWER')} should be string object for question: {flag.get('QUESTION')}"
-        assert flag.get("WRONG"), f"Config: No WRONG tile for question: {flag.get('QUESTION')}"
+        assert isinstance(
+            flag.get("QUESTION"), str
+        ), f"Config: QUESTION {flag.get('QUESTION')} should be string object."
+        assert flag.get(
+            "ANSWER"
+        ), f"Config: No ANSWER tile for question: {flag.get('QUESTION')}"
+        assert isinstance(
+            flag.get("ANSWER"), str
+        ), f"Config: ANSWER {flag.get('ANSWER')} should be string object for question: {flag.get('QUESTION')}"
+        assert flag.get(
+            "WRONG"
+        ), f"Config: No WRONG tile for question: {flag.get('QUESTION')}"
         assert (
             digest_size := len(flag.get("WRONG"))
         ) < 20, f"Config: Too many tiles for WRONG for question: {flag.get('QUESTION')}"
-        assert all(isinstance(u, str) for u in flag.get("WRONG")), f"Config: WRONG {flag.get('WRONG')} should all be string object for question: {flag.get('QUESTION')}"
-        flag["answer"] = blake2s(
-            str(flag.get("ANSWER")).encode(),
-            salt=os.urandom(8),
-            digest_size=digest_size,
-        ).hexdigest()
-        flag["wrong"] = [
+        assert all(
+            isinstance(u, str) for u in flag.get("WRONG")
+        ), f"Config: WRONG {flag.get('WRONG')} should all be string object for question: {flag.get('QUESTION')}"
+        flag.insert(
+            0,
+            "answer",
             blake2s(
-                str(flag["WRONG"][t]).encode(),
+                str(flag.get("ANSWER")).encode(),
                 salt=os.urandom(8),
                 digest_size=digest_size,
-            ).hexdigest()
-            for t in range(digest_size)
-        ]
-    config["number"] = len(config.get("CHALLENGE"))
+            ).hexdigest(),
+        )
+        flag.insert(
+            0,
+            "wrong",
+            [
+                blake2s(
+                    str(flag.get("WRONG")[t]).encode(),
+                    salt=os.urandom(8),
+                    digest_size=digest_size,
+                ).hexdigest()
+                for t in range(digest_size)
+            ],
+        )
+    config.insert(0, "number", len(config.get("CHALLENGE")))
     logger.debug(config)
     return config
 
@@ -401,14 +454,17 @@ def reload_config(context):
     for job in context.job_queue.get_jobs_by_name("reload"):
         job.schedule_removal()
     jobs = [t.name for t in context.job_queue.jobs()]
-    global config
     if jobs:
-        context.job_queue.run_once(reload_config, config.get("TIME"), name="reload")
+        context.job_queue.run_once(
+            reload_config, context.bot_data.get("config").get("TIME"), name="reload"
+        )
         logger.info(f"Job reload: Waiting for {jobs}")
         return False
     else:
-        config = load_config()
-        logger.info(f"Job reload: Successfully reloaded {config.get('filename')}")
+        context.bot_data.update(config=load_config())
+        logger.info(
+            f"Job reload: Successfully reloaded {context.bot_data.get('config').get('filename')}"
+        )
         return True
 
 
@@ -417,14 +473,20 @@ def reload_command(update, context):
     message = update.message
     chat = message.chat
     user = message.from_user
-    if user.id not in get_chat_admins(context.bot, chat.id, config.get("SUPER_ADMIN")):
+    if user.id not in get_chat_admins(
+        context.bot, chat.id, context.bot_data.get("config").get("SUPER_ADMIN")
+    ):
         logger.info(f"Reload: User {user.id} is unauthorized, blocking")
-        message.reply_text(config.get("START_UNAUTHORIZED_PRIVATE"))
+        message.reply_text(
+            context.bot_data.get("config").get("START_UNAUTHORIZED_PRIVATE")
+        )
         return
     message.reply_text(
-        config.get("RELOAD").format(num=config.get("number"))
+        context.bot_data.get("config")
+        .get("RELOAD")
+        .format(num=context.bot_data.get("config").get("number"))
         if reload_config(context)
-        else config.get("PENDING"),
+        else context.bot_data.get("config").get("PENDING"),
     )
 
 
@@ -438,22 +500,31 @@ def start_private(update, context):
     else:
         user = message.from_user
     if user.id not in get_chat_admins(
-        context.bot, config.get("CHAT"), config.get("SUPER_ADMIN")
+        context.bot,
+        context.bot_data.get("config").get("CHAT"),
+        context.bot_data.get("config").get("SUPER_ADMIN"),
     ):
         logger.info(f"Private: User {user.id} is unauthorized, blocking")
-        message.reply_text(config.get("START_UNAUTHORIZED_PRIVATE"))
+        message.reply_text(
+            context.bot_data.get("config").get("START_UNAUTHORIZED_PRIVATE")
+        )
         return ConversationHandler.END
     keyboard = [
-        [InlineKeyboardButton(config.get("SAVE_QUESTION_BTN"), callback_data="save")],
         [
             InlineKeyboardButton(
-                config.get("ADD_NEW_QUESTION_BTN"),
-                callback_data=f'edit_question_private|{config.get("number")}',
+                context.bot_data.get("config").get("SAVE_QUESTION_BTN"),
+                callback_data="save",
             )
         ],
         [
             InlineKeyboardButton(
-                config.get("LIST_ALL_QUESTION_BTN"),
+                context.bot_data.get("config").get("ADD_NEW_QUESTION_BTN"),
+                callback_data=f'edit_question_private|{context.bot_data.get("config").get("number")}',
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                context.bot_data.get("config").get("LIST_ALL_QUESTION_BTN"),
                 callback_data="list_question_private",
             )
         ],
@@ -461,12 +532,16 @@ def start_private(update, context):
     markup = InlineKeyboardMarkup(keyboard)
     if callback_query:
         callback_query.edit_message_text(
-            config.get("START_PRIVATE").format(link=config.get("CHAT")),
+            context.bot_data.get("config")
+            .get("START_PRIVATE")
+            .format(link=context.bot_data.get("config").get("CHAT")),
             reply_markup=markup,
         )
     else:
         message.reply_text(
-            config.get("START_PRIVATE").format(link=config.get("CHAT")),
+            context.bot_data.get("config")
+            .get("START_PRIVATE")
+            .format(link=context.bot_data.get("config").get("CHAT")),
             reply_markup=markup,
         )
     logger.info("Private: Start")
@@ -478,17 +553,27 @@ def start_private(update, context):
 def list_question_private(update, context):
     callback_query = update.callback_query
     callback_query.answer()
+    logger.info(context.bot_data.get("config").get("CHALLENGE"))
     keyboard = [
         [
             InlineKeyboardButton(
                 flag.get("QUESTION"), callback_data=f"detail_question_private|{num}"
             )
         ]
-        for (num, flag) in enumerate(config.get("CHALLENGE"))
+        for (num, flag) in enumerate(context.bot_data.get("config").get("CHALLENGE"))
     ]
-    keyboard.insert(0, [InlineKeyboardButton(config.get("BACK"), callback_data="back")])
+    keyboard.insert(
+        0,
+        [
+            InlineKeyboardButton(
+                context.bot_data.get("config").get("BACK"), callback_data="back"
+            )
+        ],
+    )
     markup = InlineKeyboardMarkup(keyboard)
-    callback_query.edit_message_text(config.get("LIST_PRIVATE"), reply_markup=markup)
+    callback_query.edit_message_text(
+        context.bot_data.get("config").get("LIST_PRIVATE"), reply_markup=markup
+    )
     logger.info("Private: List question")
     logger.debug(callback_query)
     return LIST_VIEW
@@ -498,26 +583,32 @@ def list_question_private(update, context):
 def detail_question_private(update, context):
     callback_query = update.callback_query
     callback_query.answer()
-    num = parse_callback(callback_query.data)
+    num = parse_callback(context, callback_query.data)
     keyboard = [
-        [InlineKeyboardButton(config.get("BACK"), callback_data="back")],
         [
             InlineKeyboardButton(
-                config.get("EDIT_QUESTION_BTN"),
+                context.bot_data.get("config").get("BACK"), callback_data="back"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                context.bot_data.get("config").get("EDIT_QUESTION_BTN"),
                 callback_data=f"edit_question_private|{num}",
             )
         ],
         [
             InlineKeyboardButton(
-                config.get("DELETE_QUESTION_BTN"),
+                context.bot_data.get("config").get("DELETE_QUESTION_BTN"),
                 callback_data=f"delete_question_private|{num}",
             )
         ],
     ]
     markup = InlineKeyboardMarkup(keyboard)
-    flag = config["CHALLENGE"][num]
+    flag = context.bot_data.get("config").get("CHALLENGE")[num]
     callback_query.edit_message_text(
-        config.get("DETAIL_QUESTION_PRIVATE").format(
+        context.bot_data.get("config")
+        .get("DETAIL_QUESTION_PRIVATE")
+        .format(
             question=flag.get("QUESTION"),
             ans=flag.get("ANSWER"),
             wrong="\n".join(flag.get("WRONG")),
@@ -531,29 +622,39 @@ def detail_question_private(update, context):
 
 @run_async
 def save_private(context, callback_query):
-    save_config(config, config.get("filename"))
+    save_config(
+        context.bot_data.get("config"), context.bot_data.get("config").get("filename")
+    )
     context.chat_data.clear()
     keyboard = [
-        [InlineKeyboardButton(config.get("BACK"), callback_data="back")],
+        [
+            InlineKeyboardButton(
+                context.bot_data.get("config").get("BACK"), callback_data="back"
+            )
+        ],
     ]
     markup = InlineKeyboardMarkup(keyboard)
     callback_query.edit_message_text(
-        config.get("RELOAD").format(num=config.get("number"))
+        context.bot_data.get("config")
+        .get("RELOAD")
+        .format(num=context.bot_data.get("config").get("number"))
         if reload_config(context)
-        else config.get("PENDING"),
+        else context.bot_data.get("config").get("PENDING"),
         reply_markup=markup,
     )
     logger.info(f"Private: Saved config")
-    logger.debug(config)
+    logger.debug(context.bot_data.get("config"))
 
 
 @collect_error
 def delete_question_private(update, context):
     callback_query = update.callback_query
     callback_query.answer()
-    callback_query.edit_message_text(config.get("DELETING_PRIVATE"))
-    num = parse_callback(callback_query.data)
-    tile = config["CHALLENGE"].pop(num)
+    callback_query.edit_message_text(
+        context.bot_data.get("config").get("DELETING_PRIVATE")
+    )
+    num = parse_callback(context, callback_query.data)
+    tile = context.bot_data.get("config").get("CHALLENGE").pop(num)
     logger.info(f"Private: Delete question {tile}")
     save_private(context, callback_query)
     return DETAIL_VIEW
@@ -566,26 +667,42 @@ def edit_question_private(update, context):
     if callback_query:
         text = "Begin"
         callback_query.answer()
-        index = parse_callback(callback_query.data)
+        index = parse_callback(context, callback_query.data)
         context.chat_data.clear()
-        context.chat_data["index"] = index
+        context.chat_data.update(index=index)
         callback_query.edit_message_text(
-            config.get("EDIT_QUESTION_PRIVATE").format(num=index + 1)
+            context.bot_data.get("config")
+            .get("EDIT_QUESTION_PRIVATE")
+            .format(num=index + 1)
         )
     elif message:
         text = message.text
         if not context.chat_data.get("QUESTION"):
-            context.chat_data["QUESTION"] = text
-            return_text = config.get("EDIT_ANSWER_PRIVATE").format(text=text)
+            context.chat_data.update(QUESTION=text)
+            return_text = (
+                context.bot_data.get("config")
+                .get("EDIT_ANSWER_PRIVATE")
+                .format(text=text)
+            )
         elif not context.chat_data.get("ANSWER"):
-            context.chat_data["ANSWER"] = text
-            return_text = config.get("EDIT_WRONG_PRIVATE").format(text=text)
+            context.chat_data.update(ANSWER=text)
+            return_text = (
+                context.bot_data.get("config")
+                .get("EDIT_WRONG_PRIVATE")
+                .format(text=text)
+            )
         else:
             if not context.chat_data.get("WRONG"):
                 context.chat_data["WRONG"] = list()
-            context.chat_data["WRONG"].append(text)
-            return_text = config.get("EDIT_MORE_WRONG_PRIVATE").format(text=text)
-        message.reply_text(config.get("EDIT_PRIVATE").format(text=return_text))
+            context.chat_data.get("WRONG").append(text)
+            return_text = (
+                context.bot_data.get("config")
+                .get("EDIT_MORE_WRONG_PRIVATE")
+                .format(text=text)
+            )
+        message.reply_text(
+            context.bot_data.get("config").get("EDIT_PRIVATE").format(text=return_text)
+        )
         logger.info(f"Private: Edit question {text}")
     return QUESTION_EDIT
 
@@ -594,15 +711,19 @@ def edit_question_private(update, context):
 def finish_edit_private(update, context):
     message = update.message
     if not context.chat_data.get("WRONG"):
-        logger.info(context.chat_data)
-        message.reply_text(config.get("EDIT_UNFINISH_PRIVATE"))
+        message.reply_text(context.bot_data.get("config").get("EDIT_UNFINISH_PRIVATE"))
         return QUESTION_EDIT
     index = context.chat_data.get("index")
     keyboard = [
-        [InlineKeyboardButton(config.get("SAVE_QUESTION_BTN"), callback_data="save")],
         [
             InlineKeyboardButton(
-                config.get("REEDIT_QUESTION_BTN"),
+                context.bot_data.get("config").get("SAVE_QUESTION_BTN"),
+                callback_data="save",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                context.bot_data.get("config").get("REEDIT_QUESTION_BTN"),
                 callback_data=f"edit_question_private|{index}",
             )
         ],
@@ -611,8 +732,12 @@ def finish_edit_private(update, context):
     message.reply_text(
         "\n".join(
             [
-                config.get("EDIT_FINISH_PRIVATE").format(num=index + 1),
-                config.get("DETAIL_QUESTION_PRIVATE").format(
+                context.bot_data.get("config")
+                .get("EDIT_FINISH_PRIVATE")
+                .format(num=index + 1),
+                context.bot_data.get("config")
+                .get("DETAIL_QUESTION_PRIVATE")
+                .format(
                     question=context.chat_data.get("QUESTION"),
                     ans=context.chat_data.get("ANSWER"),
                     wrong="\n".join(context.chat_data.get("WRONG")),
@@ -630,9 +755,11 @@ def finish_edit_private(update, context):
 def save_question_private(update, context):
     callback_query = update.callback_query
     callback_query.answer()
-    callback_query.edit_message_text(config.get("SAVING_PRIVATE"))
+    callback_query.edit_message_text(
+        context.bot_data.get("config").get("SAVING_PRIVATE")
+    )
     if context.chat_data:
-        config["CHALLENGE"].append(context.chat_data)
+        context.bot_data.get("config").get("CHALLENGE").append(context.chat_data.copy())
         logger.info(f"Private: Saving question {context.chat_data}")
     save_private(context, callback_query)
     return DETAIL_VIEW
@@ -642,7 +769,7 @@ def save_question_private(update, context):
 def cancel_private(update, context):
     message = update.message
     context.chat_data.clear()
-    message.reply_text(config.get("CANCEL_PRIVATE"))
+    message.reply_text(context.bot_data.get("config").get("CANCEL_PRIVATE"))
     logger.info(f"Private: Cancel")
     return ConversationHandler.END
 
@@ -652,10 +779,11 @@ if __name__ == "__main__":
     save_config(config)
     pp = PicklePersistence(filename=f"{config.get('filename')}.pickle", on_flush=True)
     updater = Updater(config.get("TOKEN"), persistence=pp, use_context=True)
-    chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
+    updater.dispatcher.bot_data.update(config=config)
     updater.dispatcher.add_handler(
         CommandHandler("start", start_command, filters=Filters.group)
     )
+    chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
         CommandHandler("reload", reload_command, filters=chatfilter)
     )
@@ -700,7 +828,9 @@ if __name__ == "__main__":
                     ),
                 ],
                 QUESTION_EDIT: [
-                    MessageHandler(Filters.text, edit_question_private),
+                    MessageHandler(
+                        Filters.text & ~Filters.command, edit_question_private
+                    ),
                     CommandHandler("finish", finish_edit_private),
                 ],
             },
