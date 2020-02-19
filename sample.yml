@@ -1,32 +1,51 @@
 TOKEN:
 
+#如设定群组ID需重启bot
+CHAT: -1001276986421
+
+SUPER_ADMIN: 112204143
+
 #答题时间
 TIME: 120
 
 #封禁时间
 BANTIME: 120
 
+##群组文本
+
 #欢迎信息
-START: 🍥请将我设定为管理员以使用验证功能！🍥
+START: |
+  🍥请正确设置 CHAT ID，并将我设定为管理员以使用验证功能！🍥
+  CHAT ID: `{chat}`
+  USER ID: `{user}`
 
 GREET: |
   欢迎加入 神楽めあ/Kagura Mea Group！
-  题目：%s
-  请在 %ds 内点击按钮选择答案：
+  题目：{question}
+  请在 {time} 秒内点击按钮选择答案：
 
 #反馈
 SUCCESS: 验证成功！
 
-RETRY: 验证失败，请在 %ds 后重试！
+RETRY: 验证失败，请在 {time} 秒后重试！
 
 #通过
-PASS: 验证通过，请仔细阅读群组公告和置顶后参与讨论！
+PASS: |
+  {user} 验证通过，请仔细阅读群组公告和置顶后参与讨论！
+  验证问题：{question}
+  回答：{ans}
 
 #未通过、无权限
-NOT_KICK: 验证失败，请管理员多加留意！
+NOT_KICK: |
+  {user} 验证失败，请管理员多加留意！
+  验证问题：{question}
+  回答：{ans}
 
 #未通过、踢出
-KICK: 验证失败，已被移出群组！
+KICK: |
+  {user} 验证失败，已被移出群组！
+  验证问题：{question}
+  回答：{ans}
 
 #按钮文字、通过
 PASS_BTN: 放行
@@ -35,130 +54,291 @@ PASS_BTN: 放行
 KICK_BTN: 踢出
 
 #管理员行为、通过
-ADMIN_PASS: 通过管理员放行。
+ADMIN_PASS: |
+  {user} 通过管理员 {admin} 放行。
 
 #管理员行为、踢出
-ADMIN_KICK: 被管理员踢出。
+ADMIN_KICK: |
+  {user} 被管理员 {admin} 踢出。
 
 #群友手贱
 OTHER: 请勿点击不相干的按钮。
 
+#重新加载配置
+RELOAD: 完成重新加载，现在一共有 {num} 个问题。
+
+PENDING: 已加入任务序列，等待其他任务结束后自动重新加载。
+
+##私聊文本
+
+#按钮文字、返回
+BACK: <- 返回
+
+#按钮文字、功能
+ADD_NEW_QUESTION_BTN: 添加新问题
+
+LIST_ALL_QUESTION_BTN: 查看所有问题
+
+EDIT_QUESTION_BTN: 编辑问题
+
+DELETE_QUESTION_BTN: 删除问题
+
+SAVE_QUESTION_BTN: 保存并重载配置
+
+REEDIT_QUESTION_BTN: 重新编辑问题
+
+#第一层文本
+START_PRIVATE: |
+  此 Bot 正在为群组 {link} 工作。
+  这里可以重新加载、查看并删改题目，请选择对应操作。
+  使用 /cancel 退出。
+
+START_UNAUTHORIZED_PRIVATE: 检测到未经授权的请求，将上报。
+
+#第二层文本
+LIST_PRIVATE: 现有问题列表：
+
+#第三层文本
+EDIT_PRIVATE: 正在编辑： {text}
+
+EDIT_QUESTION_PRIVATE: 开始编辑第 {num} 个问题，请填写问题：
+
+EDIT_ANSWER_PRIVATE: |
+  问题： {text}
+  请填写正确答案：
+
+EDIT_WRONG_PRIVATE: |
+  正确答案： {text}
+  请填写错误答案：
+
+EDIT_MORE_WRONG_PRIVATE: |
+  错误答案： {text}
+  可继续填写，并使用 /finish 结束。
+
+DETAIL_QUESTION_PRIVATE: |
+  问题：{question}
+  正确答案：{ans}
+  错误答案：
+  {wrong}
+
+EDIT_UNFINISH_PRIVATE: 错误答案数量不足。
+
+EDIT_FINISH_PRIVATE: 编辑问题 {num} 已结束。
+
+CANCEL_PRIVATE: 已取消所有操作。
+
+SAVING_PRIVATE: 正在保存...
+
+DELETING_PRIVATE: 正在删除...
+
+#####题目文本
+
 #题目列表
 CHALLENGE:
-  - QUESTION: 绘文字🍥⚓代表的象征意义是？
-    ANSWER: meaqua
-    WRONG:
-      - 鱼板船锚
-      - 知らない
-      - What's up?
-      - 圈圈铁锚
-  - QUESTION: 请问 Mea 人设为哪国人？
-    ANSWER: 法国
-    WRONG:
-      - 英国
-      - 梵蒂冈
-      - 墨西哥
-      - 意大利
-  - QUESTION: 请问 Mea 人设的创造者是谁？
-    ANSWER: Paryi
-    WRONG:
-      - 佃煮のりお
-      - ゆゆうた
-      - 凪白みと
-      - yagoo
-  - QUESTION: 请问 Mea 因为在初次直播中OO而被称为？
-    ANSWER: 手冲女仆
-    WRONG:
-      - 冲国财布
-      - 鱼板船锚
-      - 爱我苏联
-      - 军服铁桶
-  - QUESTION: 请问 Mea 最擅长玩哪个游戏？
-    ANSWER: 👾Tetris Online Poland
-    WRONG:
-      - 🔫Splatoon 2
-      - 🀄️Sega MJ
-      - ⛑PUBG
-      - 🛠Minecraft
-      - 🛰Space Engineer
-  - QUESTION: 请问 Mea 和谁是穴兄弟组？
-    ANSWER: 🦇宇森ひなこ
-    WRONG:
-      - 🐰因幡はねる
-      - 🐻日ノ隈らん
-      - ⚓湊あくあ
-      - 😈百鬼あやめ
-      - 🥁物述有栖
-  - QUESTION: 请问 meaqua 线下联动时玩过哪款游戏？
-    ANSWER: 🐰Super Bunny Man
-    WRONG:
-      - 🔫APEX
-      - 🐺Sekiro
-      - ⛏Minecraft
-      - 🌝Human Fall Flat
-      - 🍕Overcooked 2
-  - QUESTION: 请问 Mea 的第二个Twitter账号的用户名是以下哪个选项？
-    ANSWER: '@freeze_mea'
-    WRONG:
-      - '@mea_freeze'
-      - '@KaguraMea_VoV'
-      - '@Kagura_mea'
-      - '@Lich_King'
-      - '@Kagura_aqua'
-  - QUESTION: 请问 Meu 的是？
-    ANSWER: mea妹妹
-    WRONG:
-      - mea姐姐
-      - mea哥哥
-      - mea女儿
-      - mea外甥
-  - QUESTION: KaguraMea 曾隶属于那个企划？
-    ANSWER: パリィ プロ ぱりぷろ
-    WRONG: 
-      - ホロライブ 一期生
-      - あにまーれ 编外
-      - にじさんじ
-  - QUESTION: 庄司姐姐，神乐魅娅到底有过几个“男朋友”啊？
-    ANSWER: 4个
-    WRONG:
-      - 1个
-      - 2个
-      - 3个
-      - 她也记不太清楚
-  - QUESTION: KaguraMea 的妹妹是？
-    ANSWER: 神楽めう
-    WRONG: 
-      - 神楽なな
-      - 神楽れい
-      - 神楽彩
-      - 神楽みう
-  - QUSETION: KaguraMea是从什么时候开始活动的？
-    ANSWER: 2018/06/28
-    WRONG:
-      - 2018/12/01
-      - 2018/08/06
-      - 2018/12/1
-      - 2018/12/24
-  - QUSETION: Freeze_Mea Twitter账号是哪一天被冻结的？
-    ANSWER: 2018/05/14
-    WRONG:
-      - 2018/04/28
-      - 2018/05/25
-      - 2018/05/24
-  - QUSETION: KaguraMea 喜欢μ's里的哪一位idol?
-    ANSWER: 矢澤 にこ
-    WRONG:
-      - 南 ことり
-      - 高坂 穂乃果
-      - 西木野 真姫
-      - 絢瀬 絵里
-      - 園田 海未
-      - 星空 凛
-      - 小泉 花陽
-      - 東條 希
-  - QUSETION: KaguraMea 什么时候首次突击主播？
-    ANSWER: 2018/07/13
-    WRONG:
-      - 2018/11/23
-      - 2018/7/10
-      - 2018/7/4
+- QUESTION: 绘文字🍥⚓代表的象征意义是？
+  ANSWER: meaqua
+  WRONG:
+  - 鱼板船锚
+  - 知らない
+  - What's up?
+  - 圈圈铁锚
+- QUESTION: 请问 Mea 人设为哪国人？
+  ANSWER: 法国
+  WRONG:
+  - 英国
+  - 梵蒂冈
+  - 墨西哥
+  - 意大利
+- QUESTION: 请问 Mea 人设的创造者是谁？
+  ANSWER: Paryi
+  WRONG:
+  - 佃煮のりお
+  - ゆゆうた
+  - 凪白みと
+  - yagoo
+- QUESTION: 请问 Mea 因为在初次直播中OO而被称为？
+  ANSWER: 手冲女仆
+  WRONG:
+  - 冲国财布
+  - 鱼板船锚
+  - 爱我苏联
+  - 军服铁桶
+- QUESTION: 请问 Mea 最擅长玩哪个游戏？
+  ANSWER: 👾Tetris Online Poland
+  WRONG:
+  - 🔫Splatoon 2
+  - 🀄️Sega MJ
+  - ⛑PUBG
+  - 🛠Minecraft
+  - 🛰Space Engineer
+- QUESTION: 请问 Mea 和谁是穴兄弟组？
+  ANSWER: 🦇宇森ひなこ
+  WRONG:
+  - 🐰因幡はねる
+  - 🐻日ノ隈らん
+  - ⚓湊あくあ
+  - 😈百鬼あやめ
+  - 🥁物述有栖
+- QUESTION: 请问 meaqua 线下联动时玩过哪款游戏？
+  ANSWER: 🐰Super Bunny Man
+  WRONG:
+  - 🔫APEX
+  - 🐺Sekiro
+  - ⛏Minecraft
+  - 🌝Human Fall Flat
+  - 🍕Overcooked 2
+- QUESTION: 请问 Mea 的第二个Twitter账号的用户名是以下哪个选项？
+  ANSWER: '@freeze\_mea'
+  WRONG:
+  - '@mea\_freeze'
+  - '@KaguraMea\_VoV'
+  - '@Kagura\_mea'
+  - '@Lich\_King'
+  - '@Kagura\_aqua'
+- QUESTION: 请问 Meu 是？
+  ANSWER: mea妹妹
+  WRONG:
+  - mea姐姐
+  - mea哥哥
+  - mea女儿
+  - mea外甥
+- QUESTION: KaguraMea 曾隶属于那个企划？
+  ANSWER: パリィ プロ ぱりぷろ
+  WRONG:
+  - ホロライブ 一期生
+  - あにまーれ 编外
+  - にじさんじ
+- QUESTION: KaguraMea 的妹妹是？
+  ANSWER: 神楽めう
+  WRONG:
+  - 神楽なな
+  - 神楽れい
+  - 神楽彩
+  - 神楽みう
+- QUESTION: KaguraMea是从什么时候开始活动的？
+  ANSWER: 2018/06/28
+  WRONG:
+  - 2018/12/01
+  - 2018/08/06
+  - 2018/12/1
+  - 2018/12/24
+- QUESTION: Freeze\_Mea Twitter账号是哪一天被冻结的？
+  ANSWER: 2019/05/14
+  WRONG:
+  - 2019/04/28
+  - 2019/05/25
+  - 2019/05/24
+- QUESTION: KaguraMea 喜欢μ's里的哪一位idol?
+  ANSWER: 矢澤 にこ
+  WRONG:
+  - 南 ことり
+  - 高坂 穂乃果
+  - 西木野 真姫
+  - 絢瀬 絵里
+  - 園田 海未
+  - 星空 凛
+  - 小泉 花陽
+  - 東條 希
+- QUESTION: KaguraMea 什么时候首次突击主播？
+  ANSWER: 2018/07/13
+  WRONG:
+  - 2018/11/23
+  - 2018/7/10
+  - 2018/7/4
+- QUESTION: Mea 第一次B站限定自我介绍视频是什么时候发的？
+  ANSWER: 2018年7月17日
+  WRONG:
+  - 2018年7月13日
+  - 2018年7月4日
+  - 2018年8月2日
+- QUESTION: 神楽めあ的原创歌曲(すとろべりぃ♡こんふぃちゅ～る)里一共出现了多少次草莓果酱？
+  ANSWER: 3回
+  WRONG:
+  - 2回
+  - 4回
+  - 5回
+- QUESTION: 神楽めあ出道以来第一次联动的对象是谁？
+  ANSWER: 歌衣イツミ
+  WRONG:
+  - 織田信姫
+  - 卯月コウ
+  - 神楽彩
+- QUESTION: 和神楽めあ联动次数最多的Vtuber是谁？
+  ANSWER: 日ノ隈らん
+  WRONG:
+  - 湊あくあ
+  - 犬山たまき
+  - 因幡はねる
+- QUESTION: 2019/05/08 令和第一起事件神楽めあ丢钱包，掉了多少现金？
+  ANSWER: 31K円
+  WRONG:
+  - 20K円
+  - 25K円
+  - 115114円
+- QUESTION: 神楽めあ的羽织和帽子分别有多重？
+  ANSWER: 羽织20KG 帽子40KG
+  WRONG:
+  - 羽织80KG 帽子25KG
+  - 羽织20KG 帽子10KG
+  - 羽织80KG 帽子40KG
+- QUESTION: 神楽めあ在学生时代喜欢一下哪一门科目？
+  ANSWER: 国語
+  WRONG:
+  - 体育
+  - 数学
+  - 社会
+- QUESTION: 神楽めあ在两次憋尿俄罗斯方块里共喝了几次水呢？
+  ANSWER: 8回
+  WRONG:
+  - 4回
+  - 6回
+  - 10回
+- QUESTION: 神楽めあ的第一首原创曲里一共出现了多少次草莓果酱？
+  ANSWER: 3回
+  WRONG:
+  - 114514回
+  - 2回
+  - 4回
+  - 5回
+- QUESTION: 神楽めあ的出道日期？
+  ANSWER: 2018/06/28
+  WRONG:
+  - 2018/12/24
+  - 2018/06/01
+  - 2018/09/11
+  - 2018/05/20
+- QUESTION: 神楽めあ的生日？
+  ANSWER: 08/02
+  WRONG:
+  - 06/01
+  - 08/21
+  - 12/01
+  - 每月27号
+- QUESTION: 神楽めあ的母国首都在哪里？
+  ANSWER: 巴黎（Paris）
+  WRONG:
+  - 柏林（Berlin）
+  - 温哥华（City of Vancouver）
+  - 埃菲尔塔（La Tour Eiffel）
+  - 伊斯坦布尔（İstanbul）
+  - 凯旋门（Arc de Triomphe）
+  - 伦敦（London）
+- QUESTION: 除了流星和雅人，神楽めあ还有以下哪个牛郎男友？
+  ANSWER: 一文字隼人
+  WRONG:
+  - 智
+  - 勇
+  - 田中庄司
+- QUESTION: 神楽めあ第一次举行线下live的日期？
+  ANSWER: 2019/04/14
+  WRONG:
+  - 2019/07/14
+  - 2019/06/21
+  - 2019/05/20
+- QUESTION: 神楽めあ发布的第一首翻唱曲是什么？
+  ANSWER: 《ビースト・ダンス》
+  WRONG:
+  - 《Connect/コネクト》
+  - 《愛言葉Ⅲ》
+  - 《Flamingo》
+  - 《チカっとチカ千花っ♡》

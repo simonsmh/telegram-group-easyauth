@@ -108,3 +108,7 @@ venv.bak/
 Pipfile*
 
 \#*
+*.yml
+!sample.yml
+*.pickle
+*.bak
