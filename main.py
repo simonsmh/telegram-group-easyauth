@@ -381,12 +381,48 @@ def load_config():
         assert isinstance(
             config.get("CHAT"), int
         ), "Config: CHAT Must be ID, not username."
+        assert config.get("BACK"), "Config: BACK Does not set"
+        assert config.get("ADD_NEW_QUESTION_BTN"), "Config: ADD_NEW_QUESTION_BTN Does not set"
+        assert config.get("LIST_ALL_QUESTION_BTN"), "Config: LIST_ALL_QUESTION_BTN Does not set"
+        assert config.get("EDIT_QUESTION_BTN"), "Config: EDIT_QUESTION_BTN Does not set"
+        assert config.get("DELETE_QUESTION_BTN"), "Config: DELETE_QUESTION_BTN Does not set"
+        assert config.get("SAVE_QUESTION_BTN"), "Config: SAVE_QUESTION_BTN Does not set"
+        assert config.get("REEDIT_QUESTION_BTN"), "Config: REEDIT_QUESTION_BTN Does not set"
+        assert config.get("START_PRIVATE"), "Config: START_PRIVATE Does not set"
+        assert config.get("START_UNAUTHORIZED_PRIVATE"), "Config: START_UNAUTHORIZED_PRIVATE Does not set"
+        assert config.get("LIST_PRIVATE"), "Config: LIST_PRIVATE Does not set"
+        assert config.get("EDIT_PRIVATE"), "Config: EDIT_PRIVATE Does not set"
+        assert config.get("EDIT_QUESTION_PRIVATE"), "Config: EDIT_QUESTION_PRIVATE Does not set"
+        assert config.get("EDIT_ANSWER_PRIVATE"), "Config: EDIT_ANSWER_PRIVATE Does not set"
+        assert config.get("EDIT_WRONG_PRIVATE"), "Config: EDIT_WRONG_PRIVATE Does not set"
+        assert config.get("EDIT_MORE_WRONG_PRIVATE"), "Config: EDIT_MORE_WRONG_PRIVATE Does not set"
+        assert config.get("DETAIL_QUESTION_PRIVATE"), "Config: DETAIL_QUESTION_PRIVATE Does not set"
+        assert config.get("EDIT_UNFINISH_PRIVATE"), "Config: EDIT_UNFINISH_PRIVATE Does not set"
+        assert config.get("EDIT_FINISH_PRIVATE"), "Config: EDIT_FINISH_PRIVATE Does not set"
+        assert config.get("CANCEL_PRIVATE"), "Config: CANCEL_PRIVATE Does not set"
+        assert config.get("SAVING_PRIVATE"), "Config: SAVING_PRIVATE Does not set"
+        assert config.get("DELETING_PRIVATE"), "Config: DELETING_PRIVATE Does not set"
     else:
         logger.warning(f"Config: CHAT is not set! Use /start to get one in chat.")
     if config.get("SUPER_ADMIN"):
         assert isinstance(
             config.get("SUPER_ADMIN"), int
         ), "Config: SUPER_ADMIN Must be ID, not username."
+    assert config.get("TIME"), "Config: TIME Does not set"
+    assert config.get("BANTIME"), "Config: BANTIME Does not set"
+    assert config.get("START"), "Config: START Does not set"
+    assert config.get("GREET"), "Config: GREET Does not set"
+    assert config.get("SUCCESS"), "Config: SUCCESS Does not set"
+    assert config.get("RETRY"), "Config: RETRY Does not set"
+    assert config.get("PASS"), "Config: PASS Does not set"
+    assert config.get("NOT_KICK"), "Config: NOT_KICK Does not set"
+    assert config.get("KICK"), "Config: KICK Does not set"
+    assert config.get("PASS_BTN"), "Config: PASS_BTN Does not set"
+    assert config.get("KICK_BTN"), "Config: KICK_BTN Does not set"
+    assert config.get("ADMIN_PASS"), "Config: ADMIN_PASS Does not set"
+    assert config.get("OTHER"), "Config: OTHER Does not set"
+    assert config.get("RELOAD"), "Config: RELOAD Does not set"
+    assert config.get("PENDING"), "Config: PENDING Does not set"
     for flag in config.get("CHALLENGE"):
         assert flag.get("QUESTION"), "Config: No QUESTION tile for question."
         assert isinstance(
