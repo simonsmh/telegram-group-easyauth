@@ -339,7 +339,7 @@ def admin(update, context):
     if result:
         restore(context, chat.id, user_id)
         for job in context.job_queue.get_jobs_by_name(
-            f"{chat.id}|{user.id}|clean_join"
+            f"{chat.id}|{user_id}|clean_join"
         ):
             job.schedule_removal()
     else:
@@ -350,7 +350,7 @@ def admin(update, context):
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
-    for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
+    for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user_id}|kick"):
         job.schedule_removal()
 
 
