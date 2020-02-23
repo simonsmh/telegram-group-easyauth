@@ -185,7 +185,9 @@ def newmem(update, context):
     for user in message.new_chat_members:
         if user.is_bot:
             continue
-        num = random.randint(0, context.bot_data.get("config").get("number") - 1)
+        num = random.randint(
+            0, len(context.bot_data.get("config").get("CHALLENGE")) - 1
+        )
         flag = context.bot_data.get("config").get("CHALLENGE")[num]
         if context.bot.restrict_chat_member(
             chat_id=chat.id,
@@ -382,23 +384,47 @@ def load_config():
             config.get("CHAT"), int
         ), "Config: CHAT Must be ID, not username."
         assert config.get("BACK"), "Config: BACK Does not set"
-        assert config.get("ADD_NEW_QUESTION_BTN"), "Config: ADD_NEW_QUESTION_BTN Does not set"
-        assert config.get("LIST_ALL_QUESTION_BTN"), "Config: LIST_ALL_QUESTION_BTN Does not set"
+        assert config.get(
+            "ADD_NEW_QUESTION_BTN"
+        ), "Config: ADD_NEW_QUESTION_BTN Does not set"
+        assert config.get(
+            "LIST_ALL_QUESTION_BTN"
+        ), "Config: LIST_ALL_QUESTION_BTN Does not set"
         assert config.get("EDIT_QUESTION_BTN"), "Config: EDIT_QUESTION_BTN Does not set"
-        assert config.get("DELETE_QUESTION_BTN"), "Config: DELETE_QUESTION_BTN Does not set"
+        assert config.get(
+            "DELETE_QUESTION_BTN"
+        ), "Config: DELETE_QUESTION_BTN Does not set"
         assert config.get("SAVE_QUESTION_BTN"), "Config: SAVE_QUESTION_BTN Does not set"
-        assert config.get("REEDIT_QUESTION_BTN"), "Config: REEDIT_QUESTION_BTN Does not set"
+        assert config.get(
+            "REEDIT_QUESTION_BTN"
+        ), "Config: REEDIT_QUESTION_BTN Does not set"
         assert config.get("START_PRIVATE"), "Config: START_PRIVATE Does not set"
-        assert config.get("START_UNAUTHORIZED_PRIVATE"), "Config: START_UNAUTHORIZED_PRIVATE Does not set"
+        assert config.get(
+            "START_UNAUTHORIZED_PRIVATE"
+        ), "Config: START_UNAUTHORIZED_PRIVATE Does not set"
         assert config.get("LIST_PRIVATE"), "Config: LIST_PRIVATE Does not set"
         assert config.get("EDIT_PRIVATE"), "Config: EDIT_PRIVATE Does not set"
-        assert config.get("EDIT_QUESTION_PRIVATE"), "Config: EDIT_QUESTION_PRIVATE Does not set"
-        assert config.get("EDIT_ANSWER_PRIVATE"), "Config: EDIT_ANSWER_PRIVATE Does not set"
-        assert config.get("EDIT_WRONG_PRIVATE"), "Config: EDIT_WRONG_PRIVATE Does not set"
-        assert config.get("EDIT_MORE_WRONG_PRIVATE"), "Config: EDIT_MORE_WRONG_PRIVATE Does not set"
-        assert config.get("DETAIL_QUESTION_PRIVATE"), "Config: DETAIL_QUESTION_PRIVATE Does not set"
-        assert config.get("EDIT_UNFINISH_PRIVATE"), "Config: EDIT_UNFINISH_PRIVATE Does not set"
-        assert config.get("EDIT_FINISH_PRIVATE"), "Config: EDIT_FINISH_PRIVATE Does not set"
+        assert config.get(
+            "EDIT_QUESTION_PRIVATE"
+        ), "Config: EDIT_QUESTION_PRIVATE Does not set"
+        assert config.get(
+            "EDIT_ANSWER_PRIVATE"
+        ), "Config: EDIT_ANSWER_PRIVATE Does not set"
+        assert config.get(
+            "EDIT_WRONG_PRIVATE"
+        ), "Config: EDIT_WRONG_PRIVATE Does not set"
+        assert config.get(
+            "EDIT_MORE_WRONG_PRIVATE"
+        ), "Config: EDIT_MORE_WRONG_PRIVATE Does not set"
+        assert config.get(
+            "DETAIL_QUESTION_PRIVATE"
+        ), "Config: DETAIL_QUESTION_PRIVATE Does not set"
+        assert config.get(
+            "EDIT_UNFINISH_PRIVATE"
+        ), "Config: EDIT_UNFINISH_PRIVATE Does not set"
+        assert config.get(
+            "EDIT_FINISH_PRIVATE"
+        ), "Config: EDIT_FINISH_PRIVATE Does not set"
         assert config.get("CANCEL_PRIVATE"), "Config: CANCEL_PRIVATE Does not set"
         assert config.get("SAVING_PRIVATE"), "Config: SAVING_PRIVATE Does not set"
         assert config.get("DELETING_PRIVATE"), "Config: DELETING_PRIVATE Does not set"
@@ -464,7 +490,6 @@ def load_config():
                 for t in range(digest_size)
             ],
         )
-    config.insert(0, "number", len(config.get("CHALLENGE")))
     logger.debug(config)
     return config
 
@@ -474,7 +499,6 @@ def save_config(config, name=None):
     if not name:
         name = f"{save.get('filename')}.bak"
     save.pop("filename")
-    save.pop("number")
     for flag in save.get("CHALLENGE"):
         if flag.get("answer"):
             flag.pop("answer")
@@ -520,7 +544,7 @@ def reload_command(update, context):
     message.reply_text(
         context.bot_data.get("config")
         .get("RELOAD")
-        .format(num=context.bot_data.get("config").get("number"))
+        .format(num=len(context.bot_data.get("config").get("CHALLENGE")))
         if reload_config(context)
         else context.bot_data.get("config").get("PENDING"),
     )
@@ -555,7 +579,7 @@ def start_private(update, context):
         [
             InlineKeyboardButton(
                 context.bot_data.get("config").get("ADD_NEW_QUESTION_BTN"),
-                callback_data=f'edit_question_private|{context.bot_data.get("config").get("number")}',
+                callback_data=f'edit_question_private|{len(context.bot_data.get("config").get("CHALLENGE"))}',
             )
         ],
         [
@@ -673,7 +697,7 @@ def save_private(context, callback_query):
     callback_query.edit_message_text(
         context.bot_data.get("config")
         .get("RELOAD")
-        .format(num=context.bot_data.get("config").get("number"))
+        .format(num=len(context.bot_data.get("config").get("CHALLENGE")))
         if reload_config(context)
         else context.bot_data.get("config").get("PENDING"),
         reply_markup=markup,
@@ -782,7 +806,6 @@ def finish_edit_private(update, context):
         ),
         reply_markup=markup,
     )
-    context.chat_data.pop("index")
     logger.info(f"Private: Finish edit {context.chat_data}")
     return DETAIL_VIEW
 
@@ -795,7 +818,19 @@ def save_question_private(update, context):
         context.bot_data.get("config").get("SAVING_PRIVATE")
     )
     if context.chat_data:
-        context.bot_data.get("config").get("CHALLENGE").append(context.chat_data.copy())
+        index = (
+            context.chat_data.pop("index")
+            if context.chat_data.get("index")
+            else len(context.bot_data.get("config").get("CHALLENGE"))
+        )
+        if index < len(context.bot_data.get("config").get("CHALLENGE")):
+            context.bot_data.get("config").get("CHALLENGE")[
+                index
+            ] = context.chat_data.copy()
+        else:
+            context.bot_data.get("config").get("CHALLENGE").append(
+                context.chat_data.copy()
+            )
         logger.info(f"Private: Saving question {context.chat_data}")
     save_private(context, callback_query)
     return DETAIL_VIEW
