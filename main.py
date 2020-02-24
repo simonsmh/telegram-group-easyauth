@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import random
 import time
+from random import SystemRandom
 
 from telegram import (
     ChatPermissions,
@@ -180,9 +180,7 @@ def newmem(update, context):
     for user in message.new_chat_members:
         if user.is_bot:
             continue
-        num = random.randint(
-            0, len(context.bot_data.get("config").get("CHALLENGE")) - 1
-        )
+        num = SystemRandom().randrange(len(context.bot_data.get("config").get("CHALLENGE")) - 1)
         flag = context.bot_data.get("config").get("CHALLENGE")[num]
         if context.bot.restrict_chat_member(
             chat_id=chat.id,
@@ -213,7 +211,7 @@ def newmem(update, context):
                 )
             ]
         )
-        random.shuffle(buttons)
+        SystemRandom().shuffle(buttons)
         buttons.append(
             [
                 InlineKeyboardButton(
