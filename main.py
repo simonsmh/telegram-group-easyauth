@@ -180,7 +180,7 @@ def newmem(update, context):
     for user in message.new_chat_members:
         if user.is_bot:
             continue
-        num = SystemRandom().randrange(len(context.bot_data.get("config").get("CHALLENGE")) - 1)
+        num = SystemRandom().randint(0, len(context.bot_data.get("config").get("CHALLENGE")) - 1)
         flag = context.bot_data.get("config").get("CHALLENGE")[num]
         if context.bot.restrict_chat_member(
             chat_id=chat.id,
