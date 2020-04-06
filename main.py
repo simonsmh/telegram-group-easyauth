@@ -101,7 +101,7 @@ def start_command(update, context):
     user = message.from_user
     message.reply_text(
         context.bot_data.get("config").get("START").format(chat=chat.id, user=user.id),
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.MARKDOWN_V2,
     )
     logger.info(f"Current Jobs: {[t.name for t in context.job_queue.jobs()]}")
 
@@ -256,7 +256,7 @@ def newmem(update, context):
                 time=context.bot_data.get("config").get("TIME"),
             ),
             reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
         context.job_queue.run_once(
             kick_queue,
@@ -347,8 +347,8 @@ def query(update, context):
         else:
             conf = context.bot_data.get("config").get("NOT_KICK")
     message.edit_text(
-        conf.format(user=user.mention_markdown(), question=question, ans=answer,),
-        parse_mode=ParseMode.MARKDOWN,
+        conf.format(user=user.mention_markdown_v2(), question=question, ans=answer,),
+        parse_mode=ParseMode.MARKDOWN_V2,
     )
     for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
         job.schedule_removal()
@@ -391,9 +391,9 @@ def admin(update, context):
         kick(context, chat.id, user_id)
     message.edit_text(
         conf.format(
-            admin=user.mention_markdown(), user=mention_markdown(user_id, str(user_id)),
+            admin=user.mention_markdown_v2(), user=mention_markdown(user_id, str(user_id), version=2),
         ),
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.MARKDOWN_V2,
     )
     for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user_id}|kick"):
         job.schedule_removal()
