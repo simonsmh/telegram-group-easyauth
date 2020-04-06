@@ -710,6 +710,7 @@ def config_private(update, context):
     message = update.message
     with open(context.bot_data.get("config").get("filename"), "rb") as file:
         message.reply_document(file)
+    logger.info(f"Private: Config")
     return ConversationHandler.END
 
 

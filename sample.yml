@@ -94,7 +94,7 @@ REEDIT_QUESTION_BTN: 重新编辑问题
 START_PRIVATE: |
   此 Bot 正在为群组 {link} 工作。
   这里可以重新加载、查看并删改题目，请选择对应操作。
-  使用 /cancel 退出。
+  使用 /cancel 退出，使用 /config 获取当前配置。
 
 START_UNAUTHORIZED_PRIVATE: 检测到未经授权的请求，将上报。
 
