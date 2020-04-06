@@ -202,7 +202,9 @@ def newmem(update, context):
     for user in message.new_chat_members:
         if user.is_bot:
             continue
-        num = SystemRandom().randint(0, len(context.bot_data.get("config").get("CHALLENGE")) - 1)
+        num = SystemRandom().randint(
+            0, len(context.bot_data.get("config").get("CHALLENGE")) - 1
+        )
         flag = context.bot_data.get("config").get("CHALLENGE")[num]
         if context.bot.restrict_chat_member(
             chat_id=chat.id,
@@ -287,7 +289,9 @@ def newmem(update, context):
 @run_async
 def quiz_command(update, context):
     chat = update.effective_chat
-    num = SystemRandom().randint(0, len(context.bot_data.get("config").get("CHALLENGE")) - 1)
+    num = SystemRandom().randint(
+        0, len(context.bot_data.get("config").get("CHALLENGE")) - 1
+    )
     flag = context.bot_data.get("config").get("CHALLENGE")[num]
     answer = [flag.get("WRONG")[t] for t in range(len(flag.get("WRONG")))]
     SystemRandom().shuffle(answer)
@@ -701,6 +705,14 @@ def cancel_private(update, context):
     return ConversationHandler.END
 
 
+@collect_error
+def config_private(update, context):
+    message = update.message
+    with open(context.bot_data.get("config").get("filename"), "rb") as file:
+        message.reply_document(file)
+    return ConversationHandler.END
+
+
 if __name__ == "__main__":
     config = load_config()
     save_config(config)
@@ -764,7 +776,10 @@ if __name__ == "__main__":
                     CommandHandler("finish", finish_edit_private),
                 ],
             },
-            fallbacks=[CommandHandler("cancel", cancel_private)],
+            fallbacks=[
+                CommandHandler("cancel", cancel_private),
+                CommandHandler("config", config_private),
+            ],
             name="setting",
             allow_reentry=True,
             persistent=True,
