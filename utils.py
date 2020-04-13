@@ -70,15 +70,22 @@ class MWT(object):
 
 
 @MWT(timeout=60 * 60)
-def get_chat_admins(bot, chat_id, extra_user):
+def get_chat_admins(bot, chat_id, extra_user=None, username=False):
     if extra_user is not None and isinstance(extra_user, int):
         users = [extra_user]
     else:
         users = extra_user
-    admins = [admin.user.id for admin in bot.get_chat_administrators(chat_id)]
-    if users:
-        admins.extend(users)
-    return admins
+    admins = [
+        f"@{admin.user.username}" if username else admin.user.id
+        for admin in bot.get_chat_administrators(chat_id)
+        if admin.user.id != bot.get_me().id
+    ]
+    if username:
+        return " ".join(admins)
+    else:
+        if users:
+            admins.extend(users)
+        return admins
 
 
 def collect_error(func):
@@ -172,8 +179,14 @@ def load_config():
     assert config.get("TIME"), "Config: TIME Does not set"
     assert config.get("BANTIME"), "Config: BANTIME Does not set"
     if config.get("QUIZ"):
-        assert len(config.get("QUIZ")) > 2, "Config: QUIZ command Should be longer than 2 chars"
+        assert (
+            len(config.get("QUIZ")) > 2
+        ), "Config: QUIZ command Should be longer than 2 chars"
         assert config.get("QUIZTIME"), "Config: QUIZTIME Does not set"
+    if config.get("ADMIN"):
+        assert (
+            len(config.get("ADMIN")) > 2
+        ), "Config: ADMIN command Should be longer than 2 chars"
     assert config.get("START"), "Config: START Does not set"
     assert config.get("GREET"), "Config: GREET Does not set"
     assert config.get("SUCCESS"), "Config: SUCCESS Does not set"
@@ -268,4 +281,3 @@ def reload_config(context):
             .get("RELOAD")
             .format(num=len(context.bot_data.get("config").get("CHALLENGE")))
         )
-

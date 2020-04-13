@@ -196,7 +196,9 @@ def newmem(update, context):
     message = update.message
     chat = message.chat
     if message.from_user.id in get_chat_admins(
-        context.bot, chat.id, context.bot_data.get("config").get("SUPER_ADMIN")
+        context.bot,
+        chat.id,
+        extra_user=context.bot_data.get("config").get("SUPER_ADMIN"),
     ):
         return
     for user in message.new_chat_members:
@@ -361,7 +363,9 @@ def admin(update, context):
     message = callback_query.message
     chat = message.chat
     if user.id not in get_chat_admins(
-        context.bot, chat.id, context.bot_data.get("config").get("SUPER_ADMIN")
+        context.bot,
+        chat.id,
+        extra_user=context.bot_data.get("config").get("SUPER_ADMIN"),
     ):
         callback_query.answer(
             text=context.bot_data.get("config").get("OTHER"), show_alert=True,
@@ -401,12 +405,20 @@ def admin(update, context):
 
 
 @run_async
+def admin_command(update, context):
+    message = update.message
+    message.reply_text(get_chat_admins(context.bot, message.chat.id, username=True))
+
+
+@run_async
 def reload_command(update, context):
     message = update.message
     chat = message.chat
     user = message.from_user
     if user.id not in get_chat_admins(
-        context.bot, chat.id, context.bot_data.get("config").get("SUPER_ADMIN")
+        context.bot,
+        chat.id,
+        extra_user=context.bot_data.get("config").get("SUPER_ADMIN"),
     ):
         logger.info(f"Reload: User {user.id} is unauthorized, blocking")
         message.reply_text(
@@ -428,7 +440,7 @@ def start_private(update, context):
     if user.id not in get_chat_admins(
         context.bot,
         context.bot_data.get("config").get("CHAT"),
-        context.bot_data.get("config").get("SUPER_ADMIN"),
+        extra_user=context.bot_data.get("config").get("SUPER_ADMIN"),
     ):
         logger.info(f"Private: User {user.id} is unauthorized, blocking")
         message.reply_text(
@@ -785,13 +797,19 @@ if __name__ == "__main__":
             persistent=True,
         )
         updater.dispatcher.add_handler(conv_handler)
-        logger.info("Enhanced admin enabled.")
+        logger.info("Enhanced admin control enabled for private chat.")
     if config.get("QUIZ"):
         updater.dispatcher.add_handler(
             CommandHandler("quiz", quiz_command, filters=chatfilter)
         )
         command.append(["quiz", config.get("QUIZ")])
         logger.info("Quiz command registered.")
+    if config.get("ADMIN"):
+        updater.dispatcher.add_handler(
+            CommandHandler("admin", admin_command, filters=chatfilter)
+        )
+        command.append(["admin", config.get("ADMIN")])
+        logger.info("Admin command registered.")
     updater.dispatcher.add_error_handler(error)
     updater.start_polling()
     logger.info(f"Bot @{updater.bot.get_me().username} started.")
