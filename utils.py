@@ -255,6 +255,8 @@ def save_config(config, name=None):
             flag.pop("answer")
         if flag.get("wrong"):
             flag.pop("wrong")
+        if flag.get("index"):
+            flag.pop("index")
     with open(name, "w") as file:
         yaml.dump(save, file)
     logger.info(f"Config: Dumped {name}")

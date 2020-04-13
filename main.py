@@ -693,7 +693,7 @@ def save_question_private(update, context):
     if context.chat_data:
         index = (
             context.chat_data.pop("index")
-            if context.chat_data.get("index")
+            if "index" in context.chat_data
             else len(context.bot_data.get("config").get("CHALLENGE"))
         )
         if index < len(context.bot_data.get("config").get("CHALLENGE")):
