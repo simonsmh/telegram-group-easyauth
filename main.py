@@ -391,7 +391,8 @@ def admin(update, context):
         kick(context, chat.id, user_id)
     message.edit_text(
         conf.format(
-            admin=user.mention_markdown_v2(), user=mention_markdown(user_id, str(user_id), version=2),
+            admin=user.mention_markdown_v2(),
+            user=mention_markdown(user_id, str(user_id), version=2),
         ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
@@ -717,6 +718,7 @@ def config_private(update, context):
 if __name__ == "__main__":
     config = load_config()
     save_config(config)
+    command = list()
     pp = PicklePersistence(filename=f"{config.get('filename')}.pickle", on_flush=True)
     updater = Updater(config.get("TOKEN"), persistence=pp, use_context=True)
     updater.dispatcher.bot_data.update(config=config)
@@ -726,9 +728,6 @@ if __name__ == "__main__":
     chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
         CommandHandler("reload", reload_command, filters=chatfilter)
-    )
-    updater.dispatcher.add_handler(
-        CommandHandler("quiz", quiz_command, filters=chatfilter)
     )
     updater.dispatcher.add_handler(
         MessageHandler(
@@ -786,6 +785,15 @@ if __name__ == "__main__":
             persistent=True,
         )
         updater.dispatcher.add_handler(conv_handler)
+        logger.info("Enhanced admin enabled.")
+    if config.get("QUIZ"):
+        updater.dispatcher.add_handler(
+            CommandHandler("quiz", quiz_command, filters=chatfilter)
+        )
+        command.append(["quiz", config.get("QUIZ")])
+        logger.info("Quiz command registered.")
     updater.dispatcher.add_error_handler(error)
     updater.start_polling()
+    logger.info(f"Bot @{updater.bot.get_me().username} started.")
+    updater.bot.set_my_commands(command)
     updater.idle()

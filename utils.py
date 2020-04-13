@@ -171,7 +171,9 @@ def load_config():
         ), "Config: SUPER_ADMIN Must be ID, not username."
     assert config.get("TIME"), "Config: TIME Does not set"
     assert config.get("BANTIME"), "Config: BANTIME Does not set"
-    assert config.get("QUIZTIME"), "Config: QUIZTIME Does not set"
+    if config.get("QUIZ"):
+        assert len(config.get("QUIZ")) > 2, "Config: QUIZ command Should be longer than 2 chars"
+        assert config.get("QUIZTIME"), "Config: QUIZTIME Does not set"
     assert config.get("START"), "Config: START Does not set"
     assert config.get("GREET"), "Config: GREET Does not set"
     assert config.get("SUCCESS"), "Config: SUCCESS Does not set"
