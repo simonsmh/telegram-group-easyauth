@@ -22,7 +22,7 @@ QUIZTIME: 1200
 #命令文本（注释后关闭功能）
 ADMIN: 请求管理员帮助
 
-#欢迎信息
+#欢迎信息（支持MarkdownV2）
 START: |
   🍥请正确设置 \_\_CHAT ID\_\_，并将我设定为管理员以使用验证功能！🍥
   CHAT ID: \`{chat}\`
@@ -38,19 +38,19 @@ SUCCESS: 验证成功！
 
 RETRY: 验证失败，请在 {time} 秒后重试！
 
-#通过
+#通过（支持MarkdownV2）
 PASS: |
   {user} 验证通过，请仔细阅读群组公告和置顶后参与讨论！
   验证问题：{question}
   回答：{ans}
 
-#未通过、无权限
+#未通过、无权限（支持MarkdownV2）
 NOT_KICK: |
   {user} 验证失败，请管理员多加留意！
   验证问题：{question}
   回答：{ans}
 
-#未通过、踢出
+#未通过、踢出（支持MarkdownV2）
 KICK: |
   {user} 验证失败，已被移出群组！
   验证问题：{question}
@@ -62,11 +62,11 @@ PASS_BTN: 放行
 #按钮文字、不通过
 KICK_BTN: 踢出
 
-#管理员行为、通过
+#管理员行为、通过（支持MarkdownV2）
 ADMIN_PASS: |
   {user} 通过管理员 {admin} 放行。
 
-#管理员行为、踢出
+#管理员行为、踢出（支持MarkdownV2）
 ADMIN_KICK: |
   {user} 被管理员 {admin} 踢出。
 
@@ -197,13 +197,13 @@ CHALLENGE:
   - 🌝Human Fall Flat
   - 🍕Overcooked 2
 - QUESTION: 请问めあ的第二个 Twitter 账号的用户名是以下哪个选项？
-  ANSWER: '@freeze\_mea'
+  ANSWER: '@freeze_mea'
   WRONG:
-  - '@mea\_freeze'
-  - '@KaguraMea\_VoV'
-  - '@Kagura\_mea'
-  - '@Lich\_King'
-  - '@Kagura\_aqua'
+  - '@mea_freeze'
+  - '@KaguraMea_VoV'
+  - '@Kagura_mea'
+  - '@Lich_King'
+  - '@Kagura_aqua'
 - QUESTION: 请问 Meu 是？
   ANSWER: めあ妹妹
   WRONG:
@@ -232,7 +232,7 @@ CHALLENGE:
   - 2018/08/06
   - 2018/12/01
   - 2018/12/24
-- QUESTION: Freeze\_Mea Twitter 账号是哪一天被冻结的？
+- QUESTION: Freeze_Mea Twitter 账号是哪一天被冻结的？
   ANSWE
 R: 2019/05/14
   WRONG:
