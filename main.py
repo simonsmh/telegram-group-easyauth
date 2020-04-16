@@ -37,9 +37,9 @@ from utils import (
 
 
 def escape_markdown(text):
-    # Use {`} and reverse markdown carefully.
-    parse = re.sub(r"([_*\[\]()~>\#\+\-=|\.!])", r"\\\1", text)
-    reparse = re.sub(r"\\\\([_*\[\]()~>\#\+\-=|\.!])", r"\1", parse)
+    # Use {} and reverse markdown carefully.
+    parse = re.sub(r"([_*\[\]()~`>\#\+\-=|\.!])", r"\\\1", text)
+    reparse = re.sub(r"\\\\([_*\[\]()~`>\#\+\-=|\.!])", r"\1", parse)
     return reparse
 
 
