@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import re
 import time
 from random import SystemRandom
 
@@ -28,11 +29,18 @@ from utils import (
     FullChatPermissions,
     collect_error,
     get_chat_admins,
-    logger,
     load_config,
-    save_config,
+    logger,
     reload_config,
+    save_config,
 )
+
+
+def escape_markdown(text):
+    # Use {`} and reverse markdown carefully.
+    parse = re.sub(r"([_*\[\]()~>\#\+\-=|\.!])", r"\\\1", text)
+    reparse = re.sub(r"\\\\([_*\[\]()~>\#\+\-=|\.!])", r"\1", parse)
+    return reparse
 
 
 def parse_callback(context, data):
@@ -100,7 +108,9 @@ def start_command(update, context):
     chat = message.chat
     user = message.from_user
     message.reply_text(
-        context.bot_data.get("config").get("START").format(chat=chat.id, user=user.id),
+        escape_markdown(context.bot_data.get("config").get("START")).format(
+            chat=chat.id, user=user.id
+        ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
     logger.info(f"Current Jobs: {[t.name for t in context.job_queue.jobs()]}")
@@ -251,10 +261,8 @@ def newmem(update, context):
             ]
         )
         question_message = message.reply_text(
-            context.bot_data.get("config")
-            .get("GREET")
-            .format(
-                question=flag.get("QUESTION"),
+            escape_markdown(context.bot_data.get("config").get("GREET")).format(
+                question=escape_markdown(flag.get("QUESTION")),
                 time=context.bot_data.get("config").get("TIME"),
             ),
             reply_markup=InlineKeyboardMarkup(buttons),
@@ -349,7 +357,11 @@ def query(update, context):
         else:
             conf = context.bot_data.get("config").get("NOT_KICK")
     message.edit_text(
-        conf.format(user=user.mention_markdown_v2(), question=question, ans=answer,),
+        escape_markdown(conf).format(
+            user=user.mention_markdown_v2(),
+            question=escape_markdown(question),
+            ans=escape_markdown(answer),
+        ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
     for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
@@ -394,7 +406,7 @@ def admin(update, context):
     else:
         kick(context, chat.id, user_id)
     message.edit_text(
-        conf.format(
+        escape_markdown(conf).format(
             admin=user.mention_markdown_v2(),
             user=mention_markdown(user_id, str(user_id), version=2),
         ),
