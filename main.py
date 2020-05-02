@@ -182,26 +182,6 @@ def clean_queue(context):
 
 
 @run_async
-def close_queue(context):
-    job = context.job
-
-    def close(context, message_id, chat_id):
-        try:
-            context.bot.stop_poll(message_id, chat_id)
-            logger.info(
-                f"Job close poll: Successfully close poll {message_id} at group {chat_id}"
-            )
-            return True
-        except (BadRequest, KeyError):
-            logger.warning(
-                f"Job close poll: Cannot close poll {message_id} at group {chat_id}"
-            )
-            return False
-
-    close(context, job.context.get("chat_id"), job.context.get("message_id"))
-
-
-@run_async
 def newmem(update, context):
     message = update.message
     chat = message.chat
@@ -298,7 +278,6 @@ def newmem(update, context):
 
 @run_async
 def quiz_command(update, context):
-    chat = update.effective_chat
     num = SystemRandom().randint(
         0, len(context.bot_data.get("config").get("CHALLENGE")) - 1
     )
@@ -307,18 +286,13 @@ def quiz_command(update, context):
     SystemRandom().shuffle(answer)
     index = SystemRandom().randint(0, len(answer) - 1)
     answer.insert(index, flag.get("ANSWER"))
-    poll_message = update.effective_message.reply_poll(
+    update.effective_message.reply_poll(
         flag.get("QUESTION"),
         answer,
         correct_option_id=index,
         is_anonymous=False,
+        open_period=context.bot_data.get("config").get("QUIZTIME"),
         type=Poll.QUIZ,
-    )
-    context.job_queue.run_once(
-        close_queue,
-        context.bot_data.get("config").get("QUIZTIME"),
-        context={"chat_id": chat.id, "message_id": poll_message.message_id,},
-        name=f"{poll_message.poll.id}|close_poll",
     )
 
 

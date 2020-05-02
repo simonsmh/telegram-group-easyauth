@@ -2,7 +2,7 @@
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/5f1faac8eabc48c894ee4c0d4ba5920f)](https://www.codacy.com/manual/simonsmh/telegram-group-easyauth?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=simonsmh/telegram-group-easyauth&amp;utm_campaign=Badge_Grade)
 [![Require: Python 3.8](https://img.shields.io/badge/Python-3.8-blue)](https://www.python.org/)
-[![Require: python-telegram-bot >= 12.6.1](https://img.shields.io/badge/python--telegram--bot-%3E%3D%2012.6.1-blue)](https://github.com/python-telegram-bot/python-telegram-bot)
+[![Require: python-telegram-bot >= 12.7](https://img.shields.io/badge/python--telegram--bot-%3E%3D%2012.7-blue)](https://github.com/python-telegram-bot/python-telegram-bot)
 
 
 Telegram bot for group authentication.

@@ -266,8 +266,7 @@ def save_config(config, name=None):
 def reload_config(context):
     for job in context.job_queue.get_jobs_by_name("reload"):
         job.schedule_removal()
-    jobs = [t.name for t in context.job_queue.jobs() if "close_poll" not in t.name]
-    if jobs:
+    if jobs := [t.name for t in context.job_queue.jobs()]:
         context.job_queue.run_once(
             reload_config, context.bot_data.get("config").get("TIME"), name="reload"
         )
