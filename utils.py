@@ -100,12 +100,12 @@ def collect_error(func):
 
 def load_yaml(filename="config.yml"):
     try:
-        with open(filename, "r") as file:
+        with open(filename, "r", encoding="utf-8") as file:
             config = yaml.load(file)
     except FileNotFoundError:
         try:
             filename = f"{os.path.split(os.path.realpath(__file__))[0]}/{filename}"
-            with open(filename, "r") as file:
+            with open(filename, "r", encoding="utf-8") as file:
                 config = yaml.load(file)
         except FileNotFoundError:
             logger.exception(f"Cannot find {filename}.")
