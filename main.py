@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 import re
 import time
+import datetime
 from random import SystemRandom
-
+import logging
 from telegram import (
     ChatPermissions,
     InlineKeyboardButton,
@@ -24,7 +25,7 @@ from telegram.ext import (
 from telegram.ext.dispatcher import run_async
 from telegram.ext.filters import MergedFilter
 from telegram.utils.helpers import mention_markdown
-
+from apscheduler.schedulers.background import BackgroundScheduler
 from utils import (
     FullChatPermissions,
     collect_error,
@@ -45,7 +46,7 @@ def escape_markdown(text):
 
 def parse_callback(context, data):
     data = data.split("|")
-    print(data)
+    logger.info(f"Parse Callback: {data}")
     if data[0] == "challenge":
         user_id = int(data[1])
         number = int(data[2])
@@ -113,7 +114,7 @@ def start_command(update, context):
         ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
-    logger.info(f"Current Jobs: {[t.name for t in context.job_queue.jobs()]}")
+    logger.info(f"Current Jobs: {[t.id for t in scheduler.get_jobs()]}")
 
 
 @run_async
@@ -136,12 +137,6 @@ def kick(context, chat_id, user_id):
         return False
 
 
-@run_async
-def kick_queue(context):
-    job = context.job
-    kick(context, job.context.get("chat_id"), job.context.get("user_id"))
-
-
 def restore(context, chat_id, user_id):
     if context.bot.restrict_chat_member(
         chat_id=chat_id, user_id=user_id, permissions=FullChatPermissions,
@@ -157,28 +152,17 @@ def restore(context, chat_id, user_id):
         return False
 
 
-@run_async
-def clean_queue(context):
-    job = context.job
-
-    def clean(context, chat_id, user_id, message_id):
-        if context.bot.delete_message(chat_id=chat_id, message_id=message_id):
-            logger.info(
-                f"Job clean: Successfully delete message {message_id} from {user_id} at group {chat_id}"
-            )
-            return True
-        else:
-            logger.warning(
-                f"Job clean: No enough permissions to delete message {message_id} from {user_id} at group {chat_id}"
-            )
-            return False
-
-    clean(
-        context,
-        job.context.get("chat_id"),
-        job.context.get("user_id"),
-        job.context.get("message_id"),
-    )
+def clean(context, chat_id, user_id, message_id):
+    if context.bot.delete_message(chat_id=chat_id, message_id=message_id):
+        logger.info(
+            f"Job clean: Successfully delete message {message_id} from {user_id} at group {chat_id}"
+        )
+        return True
+    else:
+        logger.warning(
+            f"Job clean: No enough permissions to delete message {message_id} from {user_id} at group {chat_id}"
+        )
+        return False
 
 
 @run_async
@@ -248,31 +232,35 @@ def newmem(update, context):
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN_V2,
         )
-        context.job_queue.run_once(
-            kick_queue,
-            context.bot_data.get("config").get("TIME"),
-            context={"chat_id": chat.id, "user_id": user.id,},
+        scheduler.add_job(
+            kick,
+            "date",
+            id=f"{chat.id}|{user.id}|kick",
             name=f"{chat.id}|{user.id}|kick",
+            args=[context, chat.id, user.id],
+            run_date=datetime.datetime.now()
+            + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
+            replace_existing=True,
         )
-        context.job_queue.run_once(
-            clean_queue,
-            context.bot_data.get("config").get("TIME"),
-            context={
-                "chat_id": chat.id,
-                "user_id": user.id,
-                "message_id": message.message_id,
-            },
+        scheduler.add_job(
+            clean,
+            "date",
+            id=f"{chat.id}|{user.id}|clean_join",
             name=f"{chat.id}|{user.id}|clean_join",
+            args=[context, chat.id, user.id, message.message_id],
+            run_date=datetime.datetime.now()
+            + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
+            replace_existing=True,
         )
-        context.job_queue.run_once(
-            clean_queue,
-            context.bot_data.get("config").get("TIME"),
-            context={
-                "chat_id": chat.id,
-                "user_id": user.id,
-                "message_id": question_message.message_id,
-            },
+        scheduler.add_job(
+            clean,
+            "date",
+            id=f"{chat.id}|{user.id}|clean_question",
             name=f"{chat.id}|{user.id}|clean_question",
+            args=[context, chat.id, user.id, question_message.message_id],
+            run_date=datetime.datetime.now()
+            + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
+            replace_existing=True,
         )
 
 
@@ -321,10 +309,8 @@ def query(update, context):
     if result:
         conf = context.bot_data.get("config").get("PASS")
         restore(context, chat.id, user_id)
-        for job in context.job_queue.get_jobs_by_name(
-            f"{chat.id}|{user.id}|clean_join"
-        ):
-            job.schedule_removal()
+        if schedule := scheduler.get_job(f"{chat.id}|{user.id}|clean_join"):
+            schedule.remove()
     else:
         if kick(context, chat.id, user_id):
             conf = context.bot_data.get("config").get("KICK")
@@ -338,8 +324,8 @@ def query(update, context):
         ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
-    for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user.id}|kick"):
-        job.schedule_removal()
+    if schedule := scheduler.get_job(f"{chat.id}|{user.id}|kick"):
+        schedule.remove()
 
 
 @run_async
@@ -373,10 +359,8 @@ def admin(update, context):
     )
     if result:
         restore(context, chat.id, user_id)
-        for job in context.job_queue.get_jobs_by_name(
-            f"{chat.id}|{user_id}|clean_join"
-        ):
-            job.schedule_removal()
+        if schedule := scheduler.get_job(f"{chat.id}|{user_id}|clean_join"):
+            schedule.remove()
     else:
         kick(context, chat.id, user_id)
     message.edit_text(
@@ -386,8 +370,8 @@ def admin(update, context):
         ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
-    for job in context.job_queue.get_jobs_by_name(f"{chat.id}|{user_id}|kick"):
-        job.schedule_removal()
+    if schedule := scheduler.get_job(f"{chat.id}|{user_id}|kick"):
+        schedule.remove()
 
 
 @run_async
@@ -716,6 +700,8 @@ def config_private(update, context):
 if __name__ == "__main__":
     config = load_config()
     save_config(config)
+    scheduler = BackgroundScheduler()
+    scheduler.start()
     command = list()
     pp = PicklePersistence(filename=f"{config.get('filename')}.pickle", on_flush=True)
     updater = Updater(config.get("TOKEN"), persistence=pp, use_context=True)
