@@ -381,20 +381,9 @@ def admin_command(update, context):
 
 
 @run_async
-def reload_command(update, context):
+def reload_private(update, context):
     message = update.message
-    chat = message.chat
-    user = message.from_user
-    if user.id not in get_chat_admins(
-        context.bot,
-        chat.id,
-        extra_user=context.bot_data.get("config").get("SUPER_ADMIN"),
-    ):
-        logger.info(f"Reload: User {user.id} is unauthorized, blocking")
-        message.reply_text(
-            context.bot_data.get("config").get("START_UNAUTHORIZED_PRIVATE")
-        )
-        return
+    logger.info(f"Private: Reloaded config")
     message.reply_text(reload_config(context))
 
 
@@ -711,9 +700,6 @@ if __name__ == "__main__":
     )
     chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
-        CommandHandler("reload", reload_command, filters=chatfilter)
-    )
-    updater.dispatcher.add_handler(
         MessageHandler(
             MergedFilter(Filters.status_update.new_chat_members, and_filter=chatfilter),
             newmem,
@@ -763,6 +749,7 @@ if __name__ == "__main__":
             fallbacks=[
                 CommandHandler("cancel", cancel_private),
                 CommandHandler("config", config_private),
+                CommandHandler("reload", reload_private),
             ],
             name="setting",
             allow_reentry=True,
