@@ -50,65 +50,6 @@ def escape_markdown(text):
     return reparse
 
 
-def parse_callback(context, data):
-    data = data.split("|")
-    logger.info(f"Parse Callback: {data}")
-    if data[0] == "challenge":
-        user_id = int(data[1])
-        number = int(data[2])
-        answer_encode = data[3]
-        question = (
-            context.bot_data.get("config").get("CHALLENGE")[number].get("QUESTION")
-        )
-        if answer_encode == context.bot_data.get("config").get("CHALLENGE")[number].get(
-            "answer"
-        ):
-            result = True
-            answer = (
-                context.bot_data.get("config").get("CHALLENGE")[number].get("ANSWER")
-            )
-        else:
-            result = False
-            for t in range(
-                len(
-                    context.bot_data.get("config").get("CHALLENGE")[number].get("wrong")
-                )
-            ):
-                if (
-                    answer_encode
-                    == context.bot_data.get("config")
-                    .get("CHALLENGE")[number]
-                    .get("wrong")[t]
-                ):
-                    answer = (
-                        context.bot_data.get("config")
-                        .get("CHALLENGE")[number]
-                        .get("WRONG")[t]
-                    )
-                    break
-        logger.info(
-            f"New challenge parse callback:\nuser_id: {user_id}\nresult: {result}\nquestion: {question}\nanswer: {answer}"
-        )
-        return user_id, result, question, answer
-    elif data[0] == "admin":
-        if data[1] == "pass":
-            result = True
-        else:
-            result = False
-        user_id = int(data[2])
-        logger.info(f"New admin parse callback:\nuser_id: {user_id}\nresult: {result}")
-        return result, user_id
-    elif data[0] in [
-        "detail_question_private",
-        "edit_question_private",
-        "delete_question_private",
-    ]:
-        number = int(data[1])
-        logger.info(f"New private parse callback:\nresult: {number}")
-        return number
-    return
-
-
 @run_async
 def start_command(update, context):
     message = update.message
@@ -294,11 +235,52 @@ def quiz_command(update, context):
 
 @run_async
 def query(update, context):
+    def query_callback(context, data):
+        data = data.split("|")
+        logger.info(f"Parse Callback: {data}")
+        user_id = int(data[1])
+        number = int(data[2])
+        answer = str()
+        answer_encode = data[3]
+        question = (
+            context.bot_data.get("config").get("CHALLENGE")[number].get("QUESTION")
+        )
+        if answer_encode == context.bot_data.get("config").get("CHALLENGE")[number].get(
+            "answer"
+        ):
+            result = True
+            answer = (
+                context.bot_data.get("config").get("CHALLENGE")[number].get("ANSWER")
+            )
+        else:
+            result = False
+            for t in range(
+                len(
+                    context.bot_data.get("config").get("CHALLENGE")[number].get("wrong")
+                )
+            ):
+                if (
+                    answer_encode
+                    == context.bot_data.get("config")
+                    .get("CHALLENGE")[number]
+                    .get("wrong")[t]
+                ):
+                    answer = (
+                        context.bot_data.get("config")
+                        .get("CHALLENGE")[number]
+                        .get("WRONG")[t]
+                    )
+                    break
+        logger.info(
+            f"New challenge parse callback:\nuser_id: {user_id}\nresult: {result}\nquestion: {question}\nanswer: {answer}"
+        )
+        return user_id, result, question, answer
+
     callback_query = update.callback_query
     user = callback_query.from_user
     message = callback_query.message
     chat = message.chat
-    user_id, result, question, answer = parse_callback(context, callback_query.data)
+    user_id, result, question, answer = query_callback(context, callback_query.data)
     if user.id != user_id:
         callback_query.answer(
             text=context.bot_data.get("config").get("OTHER"),
@@ -340,6 +322,17 @@ def query(update, context):
 
 @run_async
 def admin(update, context):
+    def admin_callback(context, data):
+        data = data.split("|")
+        logger.info(f"Parse Callback: {data}")
+        if data[1] == "pass":
+            result = True
+        else:
+            result = False
+        user_id = int(data[2])
+        logger.info(f"New admin parse callback:\nuser_id: {user_id}\nresult: {result}")
+        return result, user_id
+
     callback_query = update.callback_query
     user = callback_query.from_user
     message = callback_query.message
@@ -354,7 +347,7 @@ def admin(update, context):
             show_alert=True,
         )
         return
-    result, user_id = parse_callback(context, callback_query.data)
+    result, user_id = admin_callback(context, callback_query.data)
     cqconf = (
         context.bot_data.get("config").get("PASS_BTN")
         if result
@@ -390,6 +383,20 @@ def admin(update, context):
 def admin_command(update, context):
     message = update.message
     message.reply_text(get_chat_admins(context.bot, message.chat.id, username=True))
+
+
+def private_callback(data):
+    data = data.split("|")
+    logger.info(f"Parse Callback: {data}")
+    if data[0] in [
+        "detail_question_private",
+        "edit_question_private",
+        "delete_question_private",
+    ]:
+        number = int(data[1])
+        logger.info(f"New private parse callback:\nresult: {number}")
+        return number
+    return
 
 
 @run_async
@@ -493,7 +500,7 @@ def list_question_private(update, context):
 def detail_question_private(update, context):
     callback_query = update.callback_query
     callback_query.answer()
-    num = parse_callback(context, callback_query.data)
+    num = private_callback(callback_query.data)
     keyboard = [
         [
             InlineKeyboardButton(
@@ -557,7 +564,7 @@ def delete_question_private(update, context):
     callback_query.edit_message_text(
         context.bot_data.get("config").get("DELETING_PRIVATE")
     )
-    num = parse_callback(context, callback_query.data)
+    num = private_callback(callback_query.data)
     tile = context.bot_data.get("config").get("CHALLENGE").pop(num)
     logger.info(f"Private: Delete question {tile}")
     save_private(context, callback_query)
@@ -571,7 +578,7 @@ def edit_question_private(update, context):
     if callback_query:
         text = "Begin"
         callback_query.answer()
-        index = parse_callback(context, callback_query.data)
+        index = private_callback(callback_query.data)
         context.chat_data.clear()
         context.chat_data.update(index=index)
         callback_query.edit_message_text(
