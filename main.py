@@ -454,6 +454,7 @@ def start_private(update, context):
             reply_markup=markup,
         )
     logger.info("Private: Start")
+    logger.info(f"Current Jobs: {[t.id for t in scheduler.get_jobs()]}")
     logger.debug(callback_query)
     return CHOOSING
 
@@ -722,7 +723,7 @@ def config_file_private(update, context):
 def reload_config(context):
     for job in context.job_queue.get_jobs_by_name("reload"):
         job.schedule_removal()
-    if jobs := [t.name for t in context.job_queue.jobs()]:
+    if jobs := [t.id for t in scheduler.get_jobs()]:
         context.job_queue.run_once(
             reload_config, context.bot_data.get("config").get("TIME"), name="reload"
         )
