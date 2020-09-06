@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import re
-import time
+import copy
 import datetime
+import os
+import re
+import sys
+import time
+from io import BytesIO
 from random import SystemRandom
-import logging
+
+from apscheduler.schedulers.background import BackgroundScheduler
 from telegram import (
     ChatPermissions,
     InlineKeyboardButton,
@@ -25,15 +30,16 @@ from telegram.ext import (
 from telegram.ext.dispatcher import run_async
 from telegram.ext.filters import MergedFilter
 from telegram.utils.helpers import mention_markdown
-from apscheduler.schedulers.background import BackgroundScheduler
+
 from utils import (
     FullChatPermissions,
     collect_error,
     get_chat_admins,
     load_config,
+    load_yml,
+    load_yml_path,
+    save_yml,
     logger,
-    reload_config,
-    save_config,
 )
 
 
@@ -139,7 +145,9 @@ def kick(context, chat_id, user_id):
 
 def restore(context, chat_id, user_id):
     if context.bot.restrict_chat_member(
-        chat_id=chat_id, user_id=user_id, permissions=FullChatPermissions,
+        chat_id=chat_id,
+        user_id=user_id,
+        permissions=FullChatPermissions,
     ):
         logger.info(
             f"Job restore: Successfully restored user {user_id} at group {chat_id}"
@@ -293,7 +301,8 @@ def query(update, context):
     user_id, result, question, answer = parse_callback(context, callback_query.data)
     if user.id != user_id:
         callback_query.answer(
-            text=context.bot_data.get("config").get("OTHER"), show_alert=True,
+            text=context.bot_data.get("config").get("OTHER"),
+            show_alert=True,
         )
         return
     cqconf = (
@@ -304,7 +313,8 @@ def query(update, context):
         .format(time=context.bot_data.get("config").get("BANTIME"))
     )
     callback_query.answer(
-        text=cqconf, show_alert=False if result else True,
+        text=cqconf,
+        show_alert=False if result else True,
     )
     if result:
         conf = context.bot_data.get("config").get("PASS")
@@ -340,7 +350,8 @@ def admin(update, context):
         extra_user=context.bot_data.get("config").get("SUPER_ADMIN"),
     ):
         callback_query.answer(
-            text=context.bot_data.get("config").get("OTHER"), show_alert=True,
+            text=context.bot_data.get("config").get("OTHER"),
+            show_alert=True,
         )
         return
     result, user_id = parse_callback(context, callback_query.data)
@@ -355,7 +366,8 @@ def admin(update, context):
         else context.bot_data.get("config").get("ADMIN_KICK")
     )
     callback_query.answer(
-        text=cqconf, show_alert=False,
+        text=cqconf,
+        show_alert=False,
     )
     if result:
         restore(context, chat.id, user_id)
@@ -519,9 +531,7 @@ def detail_question_private(update, context):
 
 @run_async
 def save_private(context, callback_query):
-    save_config(
-        context.bot_data.get("config"), context.bot_data.get("config").get("filename")
-    )
+    save_config(context.bot_data.get("config"), filename)
     context.chat_data.clear()
     keyboard = [
         [
@@ -532,7 +542,8 @@ def save_private(context, callback_query):
     ]
     markup = InlineKeyboardMarkup(keyboard)
     callback_query.edit_message_text(
-        reload_config(context), reply_markup=markup,
+        reload_config(context),
+        reply_markup=markup,
     )
     logger.info(f"Private: Saved config")
     logger.debug(context.bot_data.get("config"))
@@ -680,20 +691,95 @@ def cancel_private(update, context):
 @collect_error
 def config_private(update, context):
     message = update.message
-    with open(context.bot_data.get("config").get("filename"), "rb") as file:
+    with open(filename, "rb") as file:
         message.reply_document(file)
     logger.info(f"Private: Config")
     return ConversationHandler.END
 
 
+@collect_error
+def config_file_private(update, context):
+    message = update.effective_message
+    file_id = message.document.file_id
+    filestream = updater.bot.get_file(file_id)
+    if filestream:
+        file = BytesIO()
+        filestream.download(out=file)
+        logger.info(f"Private: Config file successfully downloaded {file_id}")
+        try:
+            with file:
+                test = load_yml(file.getvalue())
+            config = load_config(test, check_token=False)
+            save_config(config, filename)
+            message.reply_text(reload_config(context))
+        except Exception as err:
+            logger.error(err)
+            message.reply_text(
+                context.bot_data.get("config").get("CORRUPT").format(text=err.__str__())
+            )
+
+
+def reload_config(context):
+    for job in context.job_queue.get_jobs_by_name("reload"):
+        job.schedule_removal()
+    if jobs := [t.name for t in context.job_queue.jobs()]:
+        context.job_queue.run_once(
+            reload_config, context.bot_data.get("config").get("TIME"), name="reload"
+        )
+        logger.info(f"Job reload: Waiting for {jobs}")
+        return context.bot_data.get("config").get("PENDING")
+    else:
+        try:
+            yaml = load_yml_path(filename)
+            context.bot_data.update(config=load_config(yaml, check_token=False))
+            logger.info(f"Job reload: Successfully reloaded {filename}")
+            return (
+                context.bot_data.get("config")
+                .get("RELOAD")
+                .format(num=len(context.bot_data.get("config").get("CHALLENGE")))
+            )
+        except Exception as err:
+            logger.error(err)
+            return (
+                context.bot_data.get("config").get("CORRUPT").format(text=err.__str__())
+            )
+
+
+def save_config(config, name=None):
+    save = copy.deepcopy(config)
+    if not name:
+        name = f"{filename}.bak"
+    for flag in save.get("CHALLENGE"):
+        if flag.get("answer"):
+            flag.pop("answer")
+        if flag.get("wrong"):
+            flag.pop("wrong")
+        if flag.get("index"):
+            flag.pop("index")
+    save["TOKEN"] = updater.bot.token
+    with open(name, "w") as file:
+        save_yml(save, file)
+    logger.info(f"Config: Dumped {name}")
+    logger.debug(save)
+
+
 if __name__ == "__main__":
-    config = load_config()
-    save_config(config)
+    filename = (
+        sys.argv[1]
+        if len(sys.argv) >= 2 and os.path.exists(sys.argv[1])
+        else "config.yml"
+    )
+    yaml = load_yml_path(filename)
+    config = load_config(yaml)
     scheduler = BackgroundScheduler()
     scheduler.start()
     command = list()
-    pp = PicklePersistence(filename=f"{config.get('filename')}.pickle", on_flush=True)
-    updater = Updater(config.get("TOKEN"), persistence=pp, use_context=True)
+    updater = Updater(
+        config.get("TOKEN"),
+        persistence=PicklePersistence(filename=f"{filename}.pickle", on_flush=True),
+        use_context=True,
+    )
+    save_config(config)
     updater.dispatcher.bot_data.update(config=config)
     updater.dispatcher.add_handler(
         CommandHandler("start", start_command, filters=Filters.group)
@@ -708,55 +794,64 @@ if __name__ == "__main__":
     updater.dispatcher.add_handler(CallbackQueryHandler(query, pattern=r"^challenge\|"))
     updater.dispatcher.add_handler(CallbackQueryHandler(admin, pattern=r"^admin\|"))
     if config.get("CHAT"):
-        CHOOSING, LIST_VIEW, DETAIL_VIEW, QUESTION_EDIT = range(4)
-        conv_handler = ConversationHandler(
-            entry_points=[
-                CommandHandler("start", start_private, filters=Filters.private)
-            ],
-            states={
-                CHOOSING: [
-                    CallbackQueryHandler(save_question_private, pattern=r"^save$"),
-                    CallbackQueryHandler(
-                        edit_question_private, pattern=r"^edit_question_private"
-                    ),
-                    CallbackQueryHandler(
-                        list_question_private, pattern=r"^list_question_private"
-                    ),
+        try:
+            updater.bot.get_chat_administrators(config.get("CHAT"))
+        except BadRequest as err:
+            logger.error(err)
+        else:
+            CHOOSING, LIST_VIEW, DETAIL_VIEW, QUESTION_EDIT = range(4)
+            conv_handler = ConversationHandler(
+                entry_points=[
+                    CommandHandler("start", start_private, filters=Filters.private)
                 ],
-                LIST_VIEW: [
-                    CallbackQueryHandler(start_private, pattern=r"^back$"),
-                    CallbackQueryHandler(
-                        detail_question_private, pattern=r"^detail_question_private"
-                    ),
-                ],
-                DETAIL_VIEW: [
-                    CallbackQueryHandler(save_question_private, pattern=r"^save$"),
-                    CallbackQueryHandler(list_question_private, pattern=r"^back$"),
-                    CallbackQueryHandler(
-                        delete_question_private, pattern=r"^delete_question_private"
-                    ),
-                    CallbackQueryHandler(
-                        edit_question_private, pattern=r"^edit_question_private"
-                    ),
-                ],
-                QUESTION_EDIT: [
+                states={
+                    CHOOSING: [
+                        CallbackQueryHandler(save_question_private, pattern=r"^save$"),
+                        CallbackQueryHandler(
+                            edit_question_private, pattern=r"^edit_question_private"
+                        ),
+                        CallbackQueryHandler(
+                            list_question_private, pattern=r"^list_question_private"
+                        ),
+                    ],
+                    LIST_VIEW: [
+                        CallbackQueryHandler(start_private, pattern=r"^back$"),
+                        CallbackQueryHandler(
+                            detail_question_private, pattern=r"^detail_question_private"
+                        ),
+                    ],
+                    DETAIL_VIEW: [
+                        CallbackQueryHandler(save_question_private, pattern=r"^save$"),
+                        CallbackQueryHandler(list_question_private, pattern=r"^back$"),
+                        CallbackQueryHandler(
+                            delete_question_private, pattern=r"^delete_question_private"
+                        ),
+                        CallbackQueryHandler(
+                            edit_question_private, pattern=r"^edit_question_private"
+                        ),
+                    ],
+                    QUESTION_EDIT: [
+                        MessageHandler(
+                            Filters.text & ~Filters.command, edit_question_private
+                        ),
+                        CommandHandler("finish", finish_edit_private),
+                    ],
+                },
+                fallbacks=[
+                    CommandHandler("cancel", cancel_private),
+                    CommandHandler("config", config_private),
+                    CommandHandler("reload", reload_private),
                     MessageHandler(
-                        Filters.text & ~Filters.command, edit_question_private
+                        Filters.document,
+                        config_file_private,
                     ),
-                    CommandHandler("finish", finish_edit_private),
                 ],
-            },
-            fallbacks=[
-                CommandHandler("cancel", cancel_private),
-                CommandHandler("config", config_private),
-                CommandHandler("reload", reload_private),
-            ],
-            name="setting",
-            allow_reentry=True,
-            persistent=True,
-        )
-        updater.dispatcher.add_handler(conv_handler)
-        logger.info("Enhanced admin control enabled for private chat.")
+                name="setting",
+                allow_reentry=True,
+                persistent=True,
+            )
+            updater.dispatcher.add_handler(conv_handler)
+            logger.info("Enhanced admin control enabled for private chat.")
     if config.get("QUIZ"):
         updater.dispatcher.add_handler(
             CommandHandler("quiz", quiz_command, filters=chatfilter)

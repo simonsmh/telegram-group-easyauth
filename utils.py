@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Source: http://code.activestate.com/recipes/325905-memoize-decorator-with-timeout/#c1
-import copy
+import json
 import logging
 import os
 import sys
@@ -22,11 +22,17 @@ FullChatPermissions = ChatPermissions(
     can_pin_messages=True,
 )
 
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-
 logger = logging.getLogger("Telegram_Group_Easyauth")
+logger.setLevel(logging.DEBUG)
+
+formater = logging.Formatter(
+    "%(asctime)s - %(levelname)s - %(funcName)s[%(module)s:%(lineno)d] - %(message)s"
+)
+streamhandler = logging.StreamHandler()
+streamhandler.setLevel(logging.INFO)
+streamhandler.setFormatter(formater)
+logger.addHandler(streamhandler)
+
 
 yaml = ruamel.yaml.YAML()
 
@@ -98,108 +104,148 @@ def collect_error(func):
     return wrapped
 
 
-def load_yaml(filename="config.yml"):
+def save_yml(config, file):
+    return yaml.dump(config, file)
+
+def load_yml(file):
+    return yaml.load(file)
+
+
+def load_yml_path(filename="config.yml"):
     try:
         with open(filename, "r", encoding="utf-8") as file:
-            config = yaml.load(file)
+            config = load_yml(file)
     except FileNotFoundError:
         try:
             filename = f"{os.path.split(os.path.realpath(__file__))[0]}/{filename}"
             with open(filename, "r", encoding="utf-8") as file:
-                config = yaml.load(file)
+                config = load_yml(file)
         except FileNotFoundError:
-            logger.exception(f"Cannot find {filename}.")
+            logger.error(f"Cannot find {filename}.")
             sys.exit(1)
     logger.info(f"Yaml: Loaded {filename}")
-    config.insert(0, "filename", filename)
+    filehandler = logging.handlers.RotatingFileHandler(
+        f"{filename}.log", maxBytes=1048576, backupCount=5, encoding="utf-8"
+    )
+    filehandler.setLevel(logging.DEBUG)
+    filehandler.setFormatter(formater)
+    logger.addHandler(filehandler)
     return config
 
 
-def load_config():
-    if len(sys.argv) >= 2 and os.path.exists(sys.argv[1]):
-        filename = sys.argv[1]
-        config = load_yaml(filename)
-    else:
-        config = load_yaml()
+def load_config(config, check_token=True):
+    if check_token:
+        assert config.get("TOKEN"), "Config: No TOKEN."
     if config.get("CHAT"):
         assert isinstance(
             config.get("CHAT"), int
         ), "Config: CHAT Must be ID, not username."
-        assert config.get("BACK"), "Config: BACK Does not set"
-        assert config.get(
-            "ADD_NEW_QUESTION_BTN"
-        ), "Config: ADD_NEW_QUESTION_BTN Does not set"
-        assert config.get(
-            "LIST_ALL_QUESTION_BTN"
-        ), "Config: LIST_ALL_QUESTION_BTN Does not set"
-        assert config.get("EDIT_QUESTION_BTN"), "Config: EDIT_QUESTION_BTN Does not set"
-        assert config.get(
-            "DELETE_QUESTION_BTN"
-        ), "Config: DELETE_QUESTION_BTN Does not set"
-        assert config.get("SAVE_QUESTION_BTN"), "Config: SAVE_QUESTION_BTN Does not set"
-        assert config.get(
-            "REEDIT_QUESTION_BTN"
-        ), "Config: REEDIT_QUESTION_BTN Does not set"
-        assert config.get("START_PRIVATE"), "Config: START_PRIVATE Does not set"
-        assert config.get(
-            "START_UNAUTHORIZED_PRIVATE"
-        ), "Config: START_UNAUTHORIZED_PRIVATE Does not set"
-        assert config.get("LIST_PRIVATE"), "Config: LIST_PRIVATE Does not set"
-        assert config.get("EDIT_PRIVATE"), "Config: EDIT_PRIVATE Does not set"
-        assert config.get(
-            "EDIT_QUESTION_PRIVATE"
-        ), "Config: EDIT_QUESTION_PRIVATE Does not set"
-        assert config.get(
-            "EDIT_ANSWER_PRIVATE"
-        ), "Config: EDIT_ANSWER_PRIVATE Does not set"
-        assert config.get(
-            "EDIT_WRONG_PRIVATE"
-        ), "Config: EDIT_WRONG_PRIVATE Does not set"
-        assert config.get(
-            "EDIT_MORE_WRONG_PRIVATE"
-        ), "Config: EDIT_MORE_WRONG_PRIVATE Does not set"
-        assert config.get(
-            "DETAIL_QUESTION_PRIVATE"
-        ), "Config: DETAIL_QUESTION_PRIVATE Does not set"
-        assert config.get(
-            "EDIT_UNFINISH_PRIVATE"
-        ), "Config: EDIT_UNFINISH_PRIVATE Does not set"
-        assert config.get(
-            "EDIT_FINISH_PRIVATE"
-        ), "Config: EDIT_FINISH_PRIVATE Does not set"
-        assert config.get("CANCEL_PRIVATE"), "Config: CANCEL_PRIVATE Does not set"
-        assert config.get("SAVING_PRIVATE"), "Config: SAVING_PRIVATE Does not set"
-        assert config.get("DELETING_PRIVATE"), "Config: DELETING_PRIVATE Does not set"
     else:
-        logger.warning(f"Config: CHAT is not set! Use /start to get one in chat.")
+        logger.warning("Config: CHAT is not set! Use /start to get one in chat.")
     if config.get("SUPER_ADMIN"):
         assert isinstance(
             config.get("SUPER_ADMIN"), int
         ), "Config: SUPER_ADMIN Must be ID, not username."
-    assert config.get("TIME"), "Config: TIME Does not set"
-    assert config.get("BANTIME"), "Config: BANTIME Does not set"
+    if not config.get("TIME"):
+        config["TIME"] = 120
+    if not config.get("BANTIME"):
+        config["BANTIME"] = 120
     if config.get("QUIZ"):
         assert (
             len(config.get("QUIZ")) > 2
         ), "Config: QUIZ command Should be longer than 2 chars"
-        assert config.get("QUIZTIME"), "Config: QUIZTIME Does not set"
+        if not config.get("QUIZTIME"):
+            config["QUIZTIME"] = 1200
     if config.get("ADMIN"):
         assert (
             len(config.get("ADMIN")) > 2
         ), "Config: ADMIN command Should be longer than 2 chars"
-    assert config.get("START"), "Config: START Does not set"
-    assert config.get("GREET"), "Config: GREET Does not set"
-    assert config.get("SUCCESS"), "Config: SUCCESS Does not set"
-    assert config.get("RETRY"), "Config: RETRY Does not set"
-    assert config.get("PASS"), "Config: PASS Does not set"
-    assert config.get("NOT_KICK"), "Config: NOT_KICK Does not set"
-    assert config.get("KICK"), "Config: KICK Does not set"
-    assert config.get("PASS_BTN"), "Config: PASS_BTN Does not set"
-    assert config.get("KICK_BTN"), "Config: KICK_BTN Does not set"
-    assert config.get("ADMIN_PASS"), "Config: ADMIN_PASS Does not set"
-    assert config.get("OTHER"), "Config: OTHER Does not set"
-    assert config.get("RELOAD"), "Config: RELOAD Does not set"
-    assert config.get("PENDING"), "Config: PENDING Does not set"
+    if not config.get("START"):
+        config["START"] = "CHAT ID: \\`{chat}\\`\nUSER ID: \\`{user}\\`"
+    if not config.get("GREET"):
+        config["GREET"] = "Question: {question}\nPlease answer it in {time}s."
+    if not config.get("SUCCESS"):
+        config["SUCCESS"] = "Succeed."
+    if not config.get("RETRY"):
+        config["RETRY"] = "Failed. Please retry after {time}s."
+    if not config.get("PASS"):
+        config[
+            "PASS"
+        ] = "{user} passed the verification.\nQuestion: {question}\nAnswer: {ans}"
+    if not config.get("NOT_KICK"):
+        config[
+            "NOT_KICK"
+        ] = "{user} didn't pass the verification.\nQuestion: {question}\nAnswer: {ans}"
+    if not config.get("KICK"):
+        config["KICK"] = "{user} have been kicked.\nQuestion: {question}\nAnswer: {ans}"
+    if not config.get("PASS_BTN"):
+        config["PASS_BTN"] = "Pass"
+    if not config.get("KICK_BTN"):
+        config["KICK_BTN"] = "Kick"
+    if not config.get("ADMIN_PASS"):
+        config["ADMIN_PASS"] = "{user} is allowed by admin {admin}."
+    if not config.get("ADMIN_KICK"):
+        config["ADMIN_KICK"] = "{user} is kicked by admin {admin}."
+    if not config.get("OTHER"):
+        config["OTHER"] = "Don't play with buttons."
+    if not config.get("RELOAD"):
+        config["RELOAD"] = "Reload finished. Now there are {num} questions."
+    if not config.get("PENDING"):
+        config["PENDING"] = "Adding reload task to task list."
+    if not config.get("CORRUPT"):
+        config["CORRUPT"] = "The file is corrupted.\n{text}"
+    if not config.get("BACK"):
+        config["BACK"] = "<- Back"
+    if not config.get("ADD_NEW_QUESTION_BTN"):
+        config["ADD_NEW_QUESTION_BTN"] = "Add new question"
+    if not config.get("LIST_ALL_QUESTION_BTN"):
+        config["LIST_ALL_QUESTION_BTN"] = "List all questions"
+    if not config.get("EDIT_QUESTION_BTN"):
+        config["EDIT_QUESTION_BTN"] = "Edit question"
+    if not config.get("DELETE_QUESTION_BTN"):
+        config["DELETE_QUESTION_BTN"] = "Delete question"
+    if not config.get("SAVE_QUESTION_BTN"):
+        config["SAVE_QUESTION_BTN"] = "Save question"
+    if not config.get("REEDIT_QUESTION_BTN"):
+        config["REEDIT_QUESTION_BTN"] = "Re-edit question"
+    if not config.get("START_PRIVATE"):
+        config[
+            "START_PRIVATE"
+        ] = "This bot is working for {link}.\n  /cancel -- exit\n  /config -- pull config\n  /reload -- reload config\nOr send config file to me directly."
+    if not config.get("START_UNAUTHORIZED_PRIVATE"):
+        config["START_UNAUTHORIZED_PRIVATE"] = "Unauthorized request."
+    if not config.get("LIST_PRIVATE"):
+        config["LIST_PRIVATE"] = "Current questions:"
+    if not config.get("EDIT_PRIVATE"):
+        config["EDIT_PRIVATE"] = "Editing questions: {text}"
+    if not config.get("EDIT_QUESTION_PRIVATE"):
+        config[
+            "EDIT_QUESTION_PRIVATE"
+        ] = "Editing questions No.{num}, please send your question:"
+    if not config.get("EDIT_ANSWER_PRIVATE"):
+        config["EDIT_ANSWER_PRIVATE"] = "Question: {text}\nPlease send your answer:"
+    if not config.get("EDIT_WRONG_PRIVATE"):
+        config[
+            "EDIT_WRONG_PRIVATE"
+        ] = "Answer: {text}\nPlease send your misleading text:"
+    if not config.get("EDIT_MORE_WRONG_PRIVATE"):
+        config[
+            "EDIT_MORE_WRONG_PRIVATE"
+        ] = "Misleading text: {text}\nPlease send more or /finish"
+    if not config.get("DETAIL_QUESTION_PRIVATE"):
+        config[
+            "DETAIL_QUESTION_PRIVATE"
+        ] = "Question: {question}\nAnswer: {ans}\nMisleading text:\n{wrong}"
+    if not config.get("EDIT_UNFINISH_PRIVATE"):
+        config["EDIT_UNFINISH_PRIVATE"] = "Need more misleading texts."
+    if not config.get("EDIT_FINISH_PRIVATE"):
+        config["EDIT_FINISH_PRIVATE"] = "Questions No.{num} finish."
+    if not config.get("CANCEL_PRIVATE"):
+        config["CANCEL_PRIVATE"] = "Process canceled."
+    if not config.get("SAVING_PRIVATE"):
+        config["SAVING_PRIVATE"] = "Saving..."
+    if not config.get("DELETING_PRIVATE"):
+        config["DELETING_PRIVATE"] = "Deleting..."
     for flag in config.get("CHALLENGE"):
         assert flag.get("QUESTION"), "Config: No QUESTION tile for question."
         assert isinstance(
@@ -243,42 +289,3 @@ def load_config():
         )
     logger.debug(config)
     return config
-
-
-def save_config(config, name=None):
-    save = copy.deepcopy(config)
-    if not name:
-        name = f"{save.get('filename')}.bak"
-    save.pop("filename")
-    for flag in save.get("CHALLENGE"):
-        if flag.get("answer"):
-            flag.pop("answer")
-        if flag.get("wrong"):
-            flag.pop("wrong")
-        if flag.get("index"):
-            flag.pop("index")
-    with open(name, "w") as file:
-        yaml.dump(save, file)
-    logger.info(f"Config: Dumped {name}")
-    logger.debug(save)
-
-
-def reload_config(context):
-    for job in context.job_queue.get_jobs_by_name("reload"):
-        job.schedule_removal()
-    if jobs := [t.name for t in context.job_queue.jobs()]:
-        context.job_queue.run_once(
-            reload_config, context.bot_data.get("config").get("TIME"), name="reload"
-        )
-        logger.info(f"Job reload: Waiting for {jobs}")
-        return context.bot_data.get("config").get("PENDING")
-    else:
-        context.bot_data.update(config=load_config())
-        logger.info(
-            f"Job reload: Successfully reloaded {context.bot_data.get('config').get('filename')}"
-        )
-        return (
-            context.bot_data.get("config")
-            .get("RELOAD")
-            .format(num=len(context.bot_data.get("config").get("CHALLENGE")))
-        )

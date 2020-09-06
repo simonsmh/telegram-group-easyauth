@@ -78,6 +78,10 @@ RELOAD: 完成重新加载，现在一共有 {num} 个问题。
 
 PENDING: 已加入任务序列，等待其他任务结束后自动重新加载。
 
+CORRUPT: |
+  文件已损坏。
+  {text}
+
 ##私聊文本
 
 #按钮文字、返回
@@ -100,7 +104,10 @@ REEDIT_QUESTION_BTN: 重新编辑问题
 START_PRIVATE: |
   此 Bot 正在为群组 {link} 工作。
   这里可以重新加载、查看并删改题目，请选择对应操作。
-  使用 /cancel 退出，使用 /config 获取当前配置。
+    /cancel -- 退出
+    /config -- 获取当前配置
+    /reload -- 重新加载配置
+  或者直接向我发送配置文件。
 
 START_UNAUTHORIZED_PRIVATE: 检测到未经授权的请求，将上报。
 
