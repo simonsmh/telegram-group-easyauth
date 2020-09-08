@@ -3,6 +3,7 @@
 import copy
 import datetime
 import os
+import pickle
 import re
 import sys
 import time
@@ -38,8 +39,8 @@ from utils import (
     load_config,
     load_yml,
     load_yml_path,
-    save_yml,
     logger,
+    save_yml,
 )
 
 
@@ -782,9 +783,18 @@ if __name__ == "__main__":
     scheduler = BackgroundScheduler()
     scheduler.start()
     command = list()
+    pkfile = f"{filename}.pickle"
+    if os.path.isfile(pkfile):
+        try:
+            with open(pkfile, "rb") as f:
+                pickle.load(f)
+        except Exception as err:
+            logger.exception(err)
+            os.remove(pkfile)
+    pk = PicklePersistence(filename=pkfile, on_flush=True)
     updater = Updater(
         config.get("TOKEN"),
-        persistence=PicklePersistence(filename=f"{filename}.pickle", on_flush=True),
+        persistence=pk,
         use_context=True,
     )
     save_config(config)
