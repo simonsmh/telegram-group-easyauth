@@ -883,7 +883,13 @@ if __name__ == "__main__":
         command.append(["admin", config.get("ADMIN")])
         logger.info("Admin command registered.")
     updater.dispatcher.add_error_handler(error)
-    updater.start_polling()
+    if (DOMAIN := os.environ.get("DOMAIN")) and (TOKEN := config.get("TOKEN")):
+        updater.start_webhook(
+            listen="0.0.0.0", port=int(os.environ.get("PORT", 8080)), url_path=TOKEN
+        )
+        updater.bot.setWebhook(DOMAIN + TOKEN)
+    else:
+        updater.start_polling()
     logger.info(f"Bot @{updater.bot.get_me().username} started.")
     updater.bot.set_my_commands(command)
     updater.idle()
