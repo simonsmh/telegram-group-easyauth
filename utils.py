@@ -4,11 +4,12 @@ import logging
 import os
 import sys
 import time
-import traceback
 from hashlib import blake2s
+from typing import Any, List, Union
 
 import ruamel.yaml
 from telegram import ChatPermissions
+from telegram.bot import Bot
 
 FullChatPermissions = ChatPermissions(
     can_send_messages=True,
@@ -39,10 +40,10 @@ yaml = ruamel.yaml.YAML()
 class MWT(object):
     """Memoize With Timeout"""
 
-    _caches = {}
-    _timeouts = {}
+    _caches: dict = dict()
+    _timeouts: dict = dict()
 
-    def __init__(self, timeout=2):
+    def __init__(self, timeout: int = 2):
         self.timeout = timeout
 
     def collect(self):
@@ -75,42 +76,44 @@ class MWT(object):
 
 
 @MWT(timeout=60 * 60)
-def get_chat_admins(bot, chat_id, extra_user=None, username=False):
+def get_chat_admins(bot: Bot, chat_id: int, extra_user=None) -> list:
     if extra_user is not None and isinstance(extra_user, int):
-        users = [extra_user]
+        users: list = [extra_user]
     else:
-        users = extra_user
-    admins = [
-        f"@{admin.user.username}" if username else admin.user.id
+        users: list = extra_user
+    admins: list = [
+        admin.user.id
         for admin in bot.get_chat_administrators(chat_id)
         if admin.user.id != bot.get_me().id
     ]
-    if username:
-        return " ".join(admins)
+    if users:
+        admins.extend(users)
+    return admins
+
+
+@MWT(timeout=60 * 60)
+def get_chat_admins_name(bot: Bot, chat_id: int, extra_user=None) -> str:
+    if extra_user is not None and isinstance(extra_user, int):
+        users: list = [extra_user]
     else:
-        if users:
-            admins.extend(users)
-        return admins
+        users: list = extra_user
+    admins: list = [
+        f"@{admin.user.username}"
+        for admin in bot.get_chat_administrators(chat_id)
+        if admin.user.id != bot.get_me().id
+    ]
+    return " ".join(admins)
 
 
-def collect_error(func):
-    def wrapped(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception:
-            logger.info(traceback.format_exc())
-
-    return wrapped
-
-
-def save_yml(config, file):
+def save_yml(config, file) -> Any:
     return yaml.dump(config, file)
 
-def load_yml(file):
+
+def load_yml(file) -> Any:
     return yaml.load(file)
 
 
-def load_yml_path(filename="config.yml"):
+def load_yml_path(filename: str = "config.yml") -> Any:
     try:
         with open(filename, "r", encoding="utf-8") as file:
             config = load_yml(file)
@@ -132,7 +135,7 @@ def load_yml_path(filename="config.yml"):
     return config
 
 
-def load_config(config, check_token=True):
+def load_config(config, check_token: bool = True) -> dict:
     if check_token:
         assert config.get("TOKEN"), "Config: No TOKEN."
     if config.get("CHAT"):

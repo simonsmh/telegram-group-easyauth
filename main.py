@@ -8,6 +8,7 @@ import sys
 import time
 from io import BytesIO
 from random import SystemRandom
+from typing import Optional, Tuple
 
 from telegram import (
     ChatPermissions,
@@ -26,13 +27,16 @@ from telegram.ext import (
     PicklePersistence,
     Updater,
 )
+from telegram.ext.callbackcontext import CallbackContext
 from telegram.ext.filters import MergedFilter
+from telegram.update import Update
 from telegram.utils.helpers import mention_markdown
+from telegram.utils.types import HandlerArg
 
 from utils import (
     FullChatPermissions,
-    collect_error,
     get_chat_admins,
+    get_chat_admins_name,
     load_config,
     load_yml,
     load_yml_path,
@@ -41,14 +45,14 @@ from utils import (
 )
 
 
-def escape_markdown(text):
+def escape_markdown(text: str) -> str:
     # Use {} and reverse markdown carefully.
     parse = re.sub(r"([_*\[\]()~`>\#\+\-=|\.!])", r"\\\1", text)
     reparse = re.sub(r"\\\\([_*\[\]()~`>\#\+\-=|\.!])", r"\1", parse)
     return reparse
 
 
-def start_command(update, context):
+def start_command(update, context: CallbackContext) -> None:
     message = update.message
     chat = message.chat
     user = message.from_user
@@ -63,7 +67,7 @@ def start_command(update, context):
     )
 
 
-def kick(context, chat_id, user_id):
+def kick(context: CallbackContext, chat_id: int, user_id: int) -> bool:
     if context.bot.kick_chat_member(
         chat_id=chat_id,
         user_id=user_id,
@@ -78,7 +82,7 @@ def kick(context, chat_id, user_id):
         return False
 
 
-def restore(context, chat_id, user_id):
+def restore(context: CallbackContext, chat_id: int, user_id: int) -> bool:
     if context.bot.restrict_chat_member(
         chat_id=chat_id,
         user_id=user_id,
@@ -95,7 +99,9 @@ def restore(context, chat_id, user_id):
         return False
 
 
-def clean(context, chat_id, user_id, message_id):
+def clean(
+    context: CallbackContext, chat_id: int, user_id: int, message_id: int
+) -> bool:
     if context.bot.delete_message(chat_id=chat_id, message_id=message_id):
         logger.info(
             f"Job clean: Successfully delete message {message_id} from {user_id} at group {chat_id}"
@@ -108,7 +114,7 @@ def clean(context, chat_id, user_id, message_id):
         return False
 
 
-def newmem(update, context):
+def newmem(update, context: CallbackContext) -> None:
     message = update.message
     chat = message.chat
     if message.from_user.id in get_chat_admins(
@@ -206,7 +212,7 @@ def newmem(update, context):
         )
 
 
-def quiz_command(update, context):
+def quiz_command(update, context: CallbackContext) -> None:
     num = SystemRandom().randint(
         0, len(context.bot_data.get("config").get("CHALLENGE")) - 1
     )
@@ -225,9 +231,11 @@ def quiz_command(update, context):
     )
 
 
-def query(update, context):
-    def query_callback(context, data):
-        data = data.split("|")
+def query(update, context: CallbackContext) -> None:
+    def query_callback(
+        context: CallbackContext, rawstr: str
+    ) -> Tuple[int, bool, str, str]:
+        data = rawstr.split("|")
         logger.info(f"Parse Callback: {data}")
         user_id = int(data[1])
         number = int(data[2])
@@ -313,9 +321,9 @@ def query(update, context):
         schedule.remove()
 
 
-def admin(update, context):
-    def admin_callback(context, data):
-        data = data.split("|")
+def admin(update, context: CallbackContext) -> None:
+    def admin_callback(rawstr: str) -> Tuple[bool, int]:
+        data = rawstr.split("|")
         logger.info(f"Parse Callback: {data}")
         if data[1] == "pass":
             result = True
@@ -339,7 +347,7 @@ def admin(update, context):
             show_alert=True,
         )
         return
-    result, user_id = admin_callback(context, callback_query.data)
+    result, user_id = admin_callback(callback_query.data)
     cqconf = (
         context.bot_data.get("config").get("PASS_BTN")
         if result
@@ -373,13 +381,13 @@ def admin(update, context):
         schedule.remove()
 
 
-def admin_command(update, context):
+def admin_command(update, context: CallbackContext) -> None:
     message = update.message
-    message.reply_text(get_chat_admins(context.bot, message.chat.id, username=True))
+    message.reply_text(get_chat_admins_name(context.bot, message.chat.id))
 
 
-def private_callback(data):
-    data = data.split("|")
+def private_callback(rawstr: str) -> int:
+    data = rawstr.split("|")
     logger.info(f"Parse Callback: {data}")
     if data[0] in [
         "detail_question_private",
@@ -389,16 +397,17 @@ def private_callback(data):
         number = int(data[1])
         logger.info(f"New private parse callback:\nresult: {number}")
         return number
-    return
+    else:
+        return 0
 
 
-def reload_private(update, context):
+def reload_private(update, context: CallbackContext) -> None:
     message = update.message
     logger.info(f"Private: Reloaded config")
     message.reply_text(reload_config(context))
 
 
-def start_private(update, context):
+def start_private(update, context: CallbackContext) -> int:
     message = update.message
     callback_query = update.callback_query
     if callback_query:
@@ -459,8 +468,7 @@ def start_private(update, context):
     return CHOOSING
 
 
-@collect_error
-def list_question_private(update, context):
+def list_question_private(update, context: CallbackContext) -> int:
     callback_query = update.callback_query
     callback_query.answer()
     logger.debug(context.bot_data.get("config").get("CHALLENGE"))
@@ -489,8 +497,7 @@ def list_question_private(update, context):
     return LIST_VIEW
 
 
-@collect_error
-def detail_question_private(update, context):
+def detail_question_private(update, context: CallbackContext) -> int:
     callback_query = update.callback_query
     callback_query.answer()
     num = private_callback(callback_query.data)
@@ -530,7 +537,7 @@ def detail_question_private(update, context):
     return DETAIL_VIEW
 
 
-def save_private(context, callback_query):
+def save_private(context, callback_query) -> None:
     save_config(context.bot_data.get("config"), filename)
     context.chat_data.clear()
     keyboard = [
@@ -549,8 +556,7 @@ def save_private(context, callback_query):
     logger.debug(context.bot_data.get("config"))
 
 
-@collect_error
-def delete_question_private(update, context):
+def delete_question_private(update, context: CallbackContext) -> int:
     callback_query = update.callback_query
     callback_query.answer()
     callback_query.edit_message_text(
@@ -563,8 +569,7 @@ def delete_question_private(update, context):
     return DETAIL_VIEW
 
 
-@collect_error
-def edit_question_private(update, context):
+def edit_question_private(update, context: CallbackContext) -> int:
     message = update.message
     callback_query = update.callback_query
     if callback_query:
@@ -610,8 +615,7 @@ def edit_question_private(update, context):
     return QUESTION_EDIT
 
 
-@collect_error
-def finish_edit_private(update, context):
+def finish_edit_private(update, context: CallbackContext) -> int:
     message = update.message
     if not context.chat_data.get("WRONG"):
         message.reply_text(context.bot_data.get("config").get("EDIT_UNFINISH_PRIVATE"))
@@ -643,7 +647,7 @@ def finish_edit_private(update, context):
                 .format(
                     question=context.chat_data.get("QUESTION"),
                     ans=context.chat_data.get("ANSWER"),
-                    wrong="\n".join(context.chat_data.get("WRONG")),
+                    wrong="\n".join(context.chat_data.get("WRONG", "")),
                 ),
             ]
         ),
@@ -653,8 +657,7 @@ def finish_edit_private(update, context):
     return DETAIL_VIEW
 
 
-@collect_error
-def save_question_private(update, context):
+def save_question_private(update, context: CallbackContext) -> int:
     callback_query = update.callback_query
     callback_query.answer()
     callback_query.edit_message_text(
@@ -679,8 +682,7 @@ def save_question_private(update, context):
     return DETAIL_VIEW
 
 
-@collect_error
-def cancel_private(update, context):
+def cancel_private(update, context: CallbackContext) -> int:
     message = update.message
     context.chat_data.clear()
     message.reply_text(context.bot_data.get("config").get("CANCEL_PRIVATE"))
@@ -688,8 +690,7 @@ def cancel_private(update, context):
     return ConversationHandler.END
 
 
-@collect_error
-def config_private(update, context):
+def config_private(update, context: CallbackContext) -> int:
     message = update.message
     with open(filename, "rb") as file:
         message.reply_document(file)
@@ -697,8 +698,7 @@ def config_private(update, context):
     return ConversationHandler.END
 
 
-@collect_error
-def config_file_private(update, context):
+def config_file_private(update, context: CallbackContext) -> None:
     message = update.effective_message
     file_id = message.document.file_id
     filestream = updater.bot.get_file(file_id)
@@ -719,12 +719,17 @@ def config_file_private(update, context):
             )
 
 
-def reload_config(context):
+def reload_config(context: CallbackContext) -> Optional[str]:
     for job in context.job_queue.get_jobs_by_name("reload"):
         job.schedule_removal()
     if jobs := [t.id for t in context.job_queue.scheduler.get_jobs()]:
-        context.job_queue.run_once(
-            reload_config, context.bot_data.get("config").get("TIME"), name="reload"
+        context.job_queue.scheduler.add_job(
+            reload_config,
+            "date",
+            name="reload",
+            run_date=datetime.datetime.now()
+            + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
+            replace_existing=True,
         )
         logger.info(f"Job reload: Waiting for {jobs}")
         return context.bot_data.get("config").get("PENDING")
@@ -745,7 +750,7 @@ def reload_config(context):
             )
 
 
-def save_config(config, name=None):
+def save_config(config: dict, name: Optional[str] = None) -> None:
     save = copy.deepcopy(config)
     if not name:
         name = f"{filename}.bak"
@@ -781,7 +786,7 @@ if __name__ == "__main__":
         # except Exception as err:
         #     logger.exception(err)
         #     os.remove(pkfile)
-    # pk = PicklePersistence(filename=pkfile, on_flush=True)
+    pk = PicklePersistence(filename=pkfile, on_flush=True)
     updater = Updater(
         config.get("TOKEN"),
         # persistence=pk,
