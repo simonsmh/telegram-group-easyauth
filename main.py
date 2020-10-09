@@ -3,14 +3,12 @@
 import copy
 import datetime
 import os
-import pickle
 import re
 import sys
 import time
 from io import BytesIO
 from random import SystemRandom
 
-from apscheduler.schedulers.background import BackgroundScheduler
 from telegram import (
     ChatPermissions,
     InlineKeyboardButton,
@@ -28,7 +26,6 @@ from telegram.ext import (
     PicklePersistence,
     Updater,
 )
-from telegram.ext.dispatcher import run_async
 from telegram.ext.filters import MergedFilter
 from telegram.utils.helpers import mention_markdown
 
@@ -51,7 +48,6 @@ def escape_markdown(text):
     return reparse
 
 
-@run_async
 def start_command(update, context):
     message = update.message
     chat = message.chat
@@ -62,12 +58,9 @@ def start_command(update, context):
         ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
-    logger.info(f"Current Jobs: {[t.id for t in scheduler.get_jobs()]}")
-
-
-@run_async
-def error(update, context):
-    logger.warning(f"Update {context} caused error {error}")
+    logger.info(
+        f"Current Jobs: {[t.id for t in context.job_queue.scheduler.get_jobs()]}"
+    )
 
 
 def kick(context, chat_id, user_id):
@@ -115,7 +108,6 @@ def clean(context, chat_id, user_id, message_id):
         return False
 
 
-@run_async
 def newmem(update, context):
     message = update.message
     chat = message.chat
@@ -182,7 +174,7 @@ def newmem(update, context):
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN_V2,
         )
-        scheduler.add_job(
+        context.job_queue.scheduler.add_job(
             kick,
             "date",
             id=f"{chat.id}|{user.id}|kick",
@@ -192,7 +184,7 @@ def newmem(update, context):
             + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
             replace_existing=True,
         )
-        scheduler.add_job(
+        context.job_queue.scheduler.add_job(
             clean,
             "date",
             id=f"{chat.id}|{user.id}|clean_join",
@@ -202,7 +194,7 @@ def newmem(update, context):
             + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
             replace_existing=True,
         )
-        scheduler.add_job(
+        context.job_queue.scheduler.add_job(
             clean,
             "date",
             id=f"{chat.id}|{user.id}|clean_question",
@@ -214,7 +206,6 @@ def newmem(update, context):
         )
 
 
-@run_async
 def quiz_command(update, context):
     num = SystemRandom().randint(
         0, len(context.bot_data.get("config").get("CHALLENGE")) - 1
@@ -234,7 +225,6 @@ def quiz_command(update, context):
     )
 
 
-@run_async
 def query(update, context):
     def query_callback(context, data):
         data = data.split("|")
@@ -302,7 +292,9 @@ def query(update, context):
     if result:
         conf = context.bot_data.get("config").get("PASS")
         restore(context, chat.id, user_id)
-        if schedule := scheduler.get_job(f"{chat.id}|{user.id}|clean_join"):
+        if schedule := context.job_queue.scheduler.get_job(
+            f"{chat.id}|{user.id}|clean_join"
+        ):
             schedule.remove()
     else:
         if kick(context, chat.id, user_id):
@@ -317,11 +309,10 @@ def query(update, context):
         ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
-    if schedule := scheduler.get_job(f"{chat.id}|{user.id}|kick"):
+    if schedule := context.job_queue.scheduler.get_job(f"{chat.id}|{user.id}|kick"):
         schedule.remove()
 
 
-@run_async
 def admin(update, context):
     def admin_callback(context, data):
         data = data.split("|")
@@ -365,7 +356,9 @@ def admin(update, context):
     )
     if result:
         restore(context, chat.id, user_id)
-        if schedule := scheduler.get_job(f"{chat.id}|{user_id}|clean_join"):
+        if schedule := context.job_queue.scheduler.get_job(
+            f"{chat.id}|{user_id}|clean_join"
+        ):
             schedule.remove()
     else:
         kick(context, chat.id, user_id)
@@ -376,11 +369,10 @@ def admin(update, context):
         ),
         parse_mode=ParseMode.MARKDOWN_V2,
     )
-    if schedule := scheduler.get_job(f"{chat.id}|{user_id}|kick"):
+    if schedule := context.job_queue.scheduler.get_job(f"{chat.id}|{user_id}|kick"):
         schedule.remove()
 
 
-@run_async
 def admin_command(update, context):
     message = update.message
     message.reply_text(get_chat_admins(context.bot, message.chat.id, username=True))
@@ -400,14 +392,12 @@ def private_callback(data):
     return
 
 
-@run_async
 def reload_private(update, context):
     message = update.message
     logger.info(f"Private: Reloaded config")
     message.reply_text(reload_config(context))
 
 
-@collect_error
 def start_private(update, context):
     message = update.message
     callback_query = update.callback_query
@@ -462,7 +452,9 @@ def start_private(update, context):
             reply_markup=markup,
         )
     logger.info("Private: Start")
-    logger.info(f"Current Jobs: {[t.id for t in scheduler.get_jobs()]}")
+    logger.info(
+        f"Current Jobs: {[t.id for t in context.job_queue.scheduler.get_jobs()]}"
+    )
     logger.debug(callback_query)
     return CHOOSING
 
@@ -538,7 +530,6 @@ def detail_question_private(update, context):
     return DETAIL_VIEW
 
 
-@run_async
 def save_private(context, callback_query):
     save_config(context.bot_data.get("config"), filename)
     context.chat_data.clear()
@@ -731,7 +722,7 @@ def config_file_private(update, context):
 def reload_config(context):
     for job in context.job_queue.get_jobs_by_name("reload"):
         job.schedule_removal()
-    if jobs := [t.id for t in scheduler.get_jobs()]:
+    if jobs := [t.id for t in context.job_queue.scheduler.get_jobs()]:
         context.job_queue.run_once(
             reload_config, context.bot_data.get("config").get("TIME"), name="reload"
         )
@@ -780,22 +771,20 @@ if __name__ == "__main__":
     )
     yaml = load_yml_path(filename)
     config = load_config(yaml)
-    scheduler = BackgroundScheduler()
-    scheduler.start()
     command = list()
     pkfile = f"{filename}.pickle"
     if os.path.isfile(pkfile):
-        try:
-            with open(pkfile, "rb") as f:
-                pickle.load(f)
-        except Exception as err:
-            logger.exception(err)
-            os.remove(pkfile)
-    pk = PicklePersistence(filename=pkfile, on_flush=True)
+        os.remove(pkfile)
+        # try:
+        # with open(pkfile, "rb") as f:
+        #     pickle.load(f)
+        # except Exception as err:
+        #     logger.exception(err)
+        #     os.remove(pkfile)
+    # pk = PicklePersistence(filename=pkfile, on_flush=True)
     updater = Updater(
         config.get("TOKEN"),
-        persistence=pk,
-        use_context=True,
+        # persistence=pk,
     )
     save_config(config)
     updater.dispatcher.bot_data.update(config=config)
@@ -807,6 +796,7 @@ if __name__ == "__main__":
         MessageHandler(
             MergedFilter(Filters.status_update.new_chat_members, and_filter=chatfilter),
             newmem,
+            run_async=True,
         )
     )
     updater.dispatcher.add_handler(CallbackQueryHandler(query, pattern=r"^challenge\|"))
@@ -866,7 +856,7 @@ if __name__ == "__main__":
                 ],
                 name="setting",
                 allow_reentry=True,
-                persistent=True,
+                # persistent=True,
             )
             updater.dispatcher.add_handler(conv_handler)
             logger.info("Enhanced admin control enabled for private chat.")
@@ -882,7 +872,6 @@ if __name__ == "__main__":
         )
         command.append(["admin", config.get("ADMIN")])
         logger.info("Admin command registered.")
-    updater.dispatcher.add_error_handler(error)
     if (DOMAIN := os.environ.get("DOMAIN")) and (TOKEN := config.get("TOKEN")):
         updater.start_webhook(
             listen="0.0.0.0", port=int(os.environ.get("PORT", 8080)), url_path=TOKEN
