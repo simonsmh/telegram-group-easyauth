@@ -11,6 +11,7 @@ from random import SystemRandom
 from typing import Optional, Tuple
 
 from telegram import (
+    CallbackQuery,
     ChatPermissions,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -52,7 +53,7 @@ def escape_markdown(text: str) -> str:
     return reparse
 
 
-def start_command(update, context: CallbackContext) -> None:
+def start_command(update: Update, context: CallbackContext) -> None:
     message = update.message
     chat = message.chat
     user = message.from_user
@@ -114,7 +115,7 @@ def clean(
         return False
 
 
-def newmem(update, context: CallbackContext) -> None:
+def newmem(update: Update, context: CallbackContext) -> None:
     message = update.message
     chat = message.chat
     if message.from_user.id in get_chat_admins(
@@ -212,7 +213,7 @@ def newmem(update, context: CallbackContext) -> None:
         )
 
 
-def quiz_command(update, context: CallbackContext) -> None:
+def quiz_command(update: Update, context: CallbackContext) -> None:
     num = SystemRandom().randint(
         0, len(context.bot_data.get("config").get("CHALLENGE")) - 1
     )
@@ -231,7 +232,7 @@ def quiz_command(update, context: CallbackContext) -> None:
     )
 
 
-def query(update, context: CallbackContext) -> None:
+def query(update: Update, context: CallbackContext) -> None:
     def query_callback(
         context: CallbackContext, rawstr: str
     ) -> Tuple[int, bool, str, str]:
@@ -321,7 +322,7 @@ def query(update, context: CallbackContext) -> None:
         schedule.remove()
 
 
-def admin(update, context: CallbackContext) -> None:
+def admin(update: Update, context: CallbackContext) -> None:
     def admin_callback(rawstr: str) -> Tuple[bool, int]:
         data = rawstr.split("|")
         logger.info(f"Parse Callback: {data}")
@@ -381,7 +382,7 @@ def admin(update, context: CallbackContext) -> None:
         schedule.remove()
 
 
-def admin_command(update, context: CallbackContext) -> None:
+def admin_command(update: Update, context: CallbackContext) -> None:
     message = update.message
     message.reply_text(get_chat_admins_name(context.bot, message.chat.id))
 
@@ -401,13 +402,13 @@ def private_callback(rawstr: str) -> int:
         return 0
 
 
-def reload_private(update, context: CallbackContext) -> None:
+def reload_private(update: Update, context: CallbackContext) -> None:
     message = update.message
     logger.info(f"Private: Reloaded config")
     message.reply_text(reload_config(context))
 
 
-def start_private(update, context: CallbackContext) -> int:
+def start_private(update: Update, context: CallbackContext) -> int:
     message = update.message
     callback_query = update.callback_query
     if callback_query:
@@ -468,7 +469,7 @@ def start_private(update, context: CallbackContext) -> int:
     return CHOOSING
 
 
-def list_question_private(update, context: CallbackContext) -> int:
+def list_question_private(update: Update, context: CallbackContext) -> int:
     callback_query = update.callback_query
     callback_query.answer()
     logger.debug(context.bot_data.get("config").get("CHALLENGE"))
@@ -497,7 +498,7 @@ def list_question_private(update, context: CallbackContext) -> int:
     return LIST_VIEW
 
 
-def detail_question_private(update, context: CallbackContext) -> int:
+def detail_question_private(update: Update, context: CallbackContext) -> int:
     callback_query = update.callback_query
     callback_query.answer()
     num = private_callback(callback_query.data)
@@ -537,26 +538,27 @@ def detail_question_private(update, context: CallbackContext) -> int:
     return DETAIL_VIEW
 
 
-def save_private(context, callback_query) -> None:
-    save_config(context.bot_data.get("config"), filename)
-    context.chat_data.clear()
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                context.bot_data.get("config").get("BACK"), callback_data="back"
-            )
-        ],
-    ]
-    markup = InlineKeyboardMarkup(keyboard)
-    callback_query.edit_message_text(
-        reload_config(context),
-        reply_markup=markup,
-    )
-    logger.info(f"Private: Saved config")
-    logger.debug(context.bot_data.get("config"))
+def save_private(context: CallbackContext, callback_query: CallbackQuery) -> None:
+    if context.bot_data.get("config"):
+        save_config(context.bot_data["config"], filename)
+        context.chat_data.clear()
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    context.bot_data.get("config").get("BACK"), callback_data="back"
+                )
+            ],
+        ]
+        markup = InlineKeyboardMarkup(keyboard)
+        callback_query.edit_message_text(
+            reload_config(context),
+            reply_markup=markup,
+        )
+        logger.info(f"Private: Saved config")
+        logger.debug(context.bot_data.get("config"))
 
 
-def delete_question_private(update, context: CallbackContext) -> int:
+def delete_question_private(update: Update, context: CallbackContext) -> int:
     callback_query = update.callback_query
     callback_query.answer()
     callback_query.edit_message_text(
@@ -569,7 +571,7 @@ def delete_question_private(update, context: CallbackContext) -> int:
     return DETAIL_VIEW
 
 
-def edit_question_private(update, context: CallbackContext) -> int:
+def edit_question_private(update: Update, context: CallbackContext) -> int:
     message = update.message
     callback_query = update.callback_query
     if callback_query:
@@ -615,7 +617,7 @@ def edit_question_private(update, context: CallbackContext) -> int:
     return QUESTION_EDIT
 
 
-def finish_edit_private(update, context: CallbackContext) -> int:
+def finish_edit_private(update: Update, context: CallbackContext) -> int:
     message = update.message
     if not context.chat_data.get("WRONG"):
         message.reply_text(context.bot_data.get("config").get("EDIT_UNFINISH_PRIVATE"))
@@ -657,7 +659,7 @@ def finish_edit_private(update, context: CallbackContext) -> int:
     return DETAIL_VIEW
 
 
-def save_question_private(update, context: CallbackContext) -> int:
+def save_question_private(update: Update, context: CallbackContext) -> int:
     callback_query = update.callback_query
     callback_query.answer()
     callback_query.edit_message_text(
@@ -682,7 +684,7 @@ def save_question_private(update, context: CallbackContext) -> int:
     return DETAIL_VIEW
 
 
-def cancel_private(update, context: CallbackContext) -> int:
+def cancel_private(update: Update, context: CallbackContext) -> int:
     message = update.message
     context.chat_data.clear()
     message.reply_text(context.bot_data.get("config").get("CANCEL_PRIVATE"))
@@ -690,7 +692,7 @@ def cancel_private(update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
-def config_private(update, context: CallbackContext) -> int:
+def config_private(update: Update, context: CallbackContext) -> int:
     message = update.message
     with open(filename, "rb") as file:
         message.reply_document(file)
@@ -698,7 +700,7 @@ def config_private(update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
-def config_file_private(update, context: CallbackContext) -> None:
+def config_file_private(update: Update, context: CallbackContext) -> None:
     message = update.effective_message
     file_id = message.document.file_id
     filestream = updater.bot.get_file(file_id)
@@ -719,7 +721,7 @@ def config_file_private(update, context: CallbackContext) -> None:
             )
 
 
-def reload_config(context: CallbackContext) -> Optional[str]:
+def reload_config(context: CallbackContext) -> str:
     for job in context.job_queue.get_jobs_by_name("reload"):
         job.schedule_removal()
     if jobs := [t.id for t in context.job_queue.scheduler.get_jobs()]:
