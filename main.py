@@ -187,7 +187,7 @@ def newmem(update: Update, context: CallbackContext) -> None:
             id=f"{chat.id}|{user.id}|kick",
             name=f"{chat.id}|{user.id}|kick",
             args=[context, chat.id, user.id],
-            run_date=datetime.datetime.now()
+            run_date=context.job_queue._tz_now()
             + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
             replace_existing=True,
         )
@@ -197,7 +197,7 @@ def newmem(update: Update, context: CallbackContext) -> None:
             id=f"{chat.id}|{user.id}|clean_join",
             name=f"{chat.id}|{user.id}|clean_join",
             args=[context, chat.id, user.id, message.message_id],
-            run_date=datetime.datetime.now()
+            run_date=context.job_queue._tz_now()
             + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
             replace_existing=True,
         )
@@ -207,7 +207,7 @@ def newmem(update: Update, context: CallbackContext) -> None:
             id=f"{chat.id}|{user.id}|clean_question",
             name=f"{chat.id}|{user.id}|clean_question",
             args=[context, chat.id, user.id, question_message.message_id],
-            run_date=datetime.datetime.now()
+            run_date=context.job_queue._tz_now()
             + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
             replace_existing=True,
         )
@@ -729,7 +729,7 @@ def reload_config(context: CallbackContext) -> str:
             reload_config,
             "date",
             name="reload",
-            run_date=datetime.datetime.now()
+            run_date=context.job_queue._tz_now()
             + datetime.timedelta(seconds=context.bot_data.get("config").get("TIME")),
             replace_existing=True,
         )
