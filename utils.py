@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # Source: http://code.activestate.com/recipes/325905-memoize-decorator-with-timeout/#c1
 import logging
+import logging.handlers
 import os
 import sys
 import time
 from hashlib import blake2s
-from typing import Any, List, Union
+from typing import IO, Any, Union
 
 import ruamel.yaml
 from telegram import ChatPermissions
@@ -105,11 +106,11 @@ def get_chat_admins_name(bot: Bot, chat_id: int, extra_user=None) -> str:
     return " ".join(admins)
 
 
-def save_yml(config, file) -> Any:
+def save_yml(config: dict, file: Union[IO[str], IO[bytes]]) -> Any:
     return yaml.dump(config, file)
 
 
-def load_yml(file) -> Any:
+def load_yml(file: Union[IO[str], IO[bytes]]) -> Any:
     return yaml.load(file)
 
 
@@ -135,7 +136,7 @@ def load_yml_path(filename: str = "config.yml") -> Any:
     return config
 
 
-def load_config(config, check_token: bool = True) -> dict:
+def load_config(config: dict, check_token: bool = True) -> dict:
     if check_token:
         assert config.get("TOKEN"), "Config: No TOKEN."
     if config.get("CHAT"):
@@ -154,13 +155,13 @@ def load_config(config, check_token: bool = True) -> dict:
         config["BANTIME"] = 120
     if config.get("QUIZ"):
         assert (
-            len(config.get("QUIZ")) > 2
+            len(config.get("QUIZ", "")) > 2
         ), "Config: QUIZ command Should be longer than 2 chars"
         if not config.get("QUIZTIME"):
             config["QUIZTIME"] = 1200
     if config.get("ADMIN"):
         assert (
-            len(config.get("ADMIN")) > 2
+            len(config.get("ADMIN", "")) > 2
         ), "Config: ADMIN command Should be longer than 2 chars"
     if not config.get("START"):
         config["START"] = "CHAT ID: \\`{chat}\\`\nUSER ID: \\`{user}\\`"
