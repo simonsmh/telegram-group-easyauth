@@ -110,7 +110,7 @@ def save_yml(config: dict, file: Union[IO[str], IO[bytes]]) -> Any:
     return yaml.dump(config, file)
 
 
-def load_yml(file: Union[IO[str], IO[bytes]]) -> Any:
+def load_yml(file: Union[IO[str], IO[bytes], bytes]) -> Any:
     return yaml.load(file)
 
 

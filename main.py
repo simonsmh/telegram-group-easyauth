@@ -796,7 +796,7 @@ if __name__ == "__main__":
     save_config(config)
     updater.dispatcher.bot_data.update(config=config)
     updater.dispatcher.add_handler(
-        CommandHandler("start", start_command, filters=Filters.group)
+        CommandHandler("start", start_command, filters=Filters.chat_type.group)
     )
     chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
@@ -817,7 +817,7 @@ if __name__ == "__main__":
             CHOOSING, LIST_VIEW, DETAIL_VIEW, QUESTION_EDIT = range(4)
             conv_handler = ConversationHandler(
                 entry_points=[
-                    CommandHandler("start", start_private, filters=Filters.private)
+                    CommandHandler("start", start_private, filters=Filters.chat_type.private)
                 ],
                 states={
                     CHOOSING: [
