@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import argparse
 import copy
 import datetime
 import os
 import re
-import sys
 import time
 from io import BytesIO
 from random import SystemRandom
@@ -32,17 +32,16 @@ from telegram.ext.callbackcontext import CallbackContext
 from telegram.ext.filters import MergedFilter
 from telegram.update import Update
 from telegram.utils.helpers import mention_markdown
-from telegram.utils.types import HandlerArg
 
 from utils import (
     FullChatPermissions,
     get_chat_admins,
     get_chat_admins_name,
     load_config,
-    load_yml,
-    load_yml_path,
+    log_to_file,
+    log_to_stream,
     logger,
-    save_yml,
+    yaml,
 )
 
 
@@ -710,7 +709,7 @@ def config_file_private(update: Update, context: CallbackContext) -> None:
         logger.info(f"Private: Config file successfully downloaded {file_id}")
         try:
             with file:
-                test = load_yml(file.getvalue())
+                test = yaml.load(file.getvalue())
             config = load_config(test, check_token=False)
             save_config(config, filename)
             message.reply_text(reload_config(context))
@@ -737,8 +736,10 @@ def reload_config(context: CallbackContext) -> str:
         return context.bot_data.get("config").get("PENDING")
     else:
         try:
-            yaml = load_yml_path(filename)
-            context.bot_data.update(config=load_config(yaml, check_token=False))
+            with open(filename, "r", encoding="utf-8") as file:
+                context.bot_data.update(
+                    config=load_config(yaml.load(file), check_token=False)
+                )
             logger.info(f"Job reload: Successfully reloaded {filename}")
             return (
                 context.bot_data.get("config")
@@ -765,34 +766,42 @@ def save_config(config: dict, name: Optional[str] = None) -> None:
             flag.pop("index")
     save["TOKEN"] = updater.bot.token
     with open(name, "w") as file:
-        save_yml(save, file)
+        yaml.dump(save, file)
     logger.info(f"Config: Dumped {name}")
     logger.debug(save)
 
 
 if __name__ == "__main__":
-    filename = (
-        sys.argv[1]
-        if len(sys.argv) >= 2 and os.path.exists(sys.argv[1])
-        else "config.yml"
+    parser = argparse.ArgumentParser(description="Telegram Group Easy Auth.")
+    default_filename = (
+        f"{os.path.split(os.path.realpath(__file__))[0] + os.path.sep}config.yml"
     )
-    yaml = load_yml_path(filename)
-    config = load_config(yaml)
+    parser.add_argument(
+        "file",
+        metavar="config",
+        default=default_filename,
+        help=f"path to config.yml, defaults to {default_filename}",
+        nargs="?",
+        type=str,
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help=f"enable logging to file",
+    )
+    args = parser.parse_args()
+    filename = os.path.abspath(args.file)
+    if not os.path.exists(filename):
+        parser.error(f"The file {filename} does not exist!")
+    log_to_stream()
+    if args.debug:
+        log_to_file(f"{filename}.log")
+    with open(filename, "r", encoding="utf-8") as file:
+        config = yaml.load(file)
+    logger.info(f"Yaml: Loaded {filename}")
     command = list()
-    pkfile = f"{filename}.pickle"
-    if os.path.isfile(pkfile):
-        os.remove(pkfile)
-        # try:
-        # with open(pkfile, "rb") as f:
-        #     pickle.load(f)
-        # except Exception as err:
-        #     logger.exception(err)
-        #     os.remove(pkfile)
-    pk = PicklePersistence(filename=pkfile, on_flush=True)
-    updater = Updater(
-        config.get("TOKEN"),
-        # persistence=pk,
-    )
+    updater = Updater(config.get("TOKEN"))
     save_config(config)
     updater.dispatcher.bot_data.update(config=config)
     updater.dispatcher.add_handler(
@@ -817,7 +826,9 @@ if __name__ == "__main__":
             CHOOSING, LIST_VIEW, DETAIL_VIEW, QUESTION_EDIT = range(4)
             conv_handler = ConversationHandler(
                 entry_points=[
-                    CommandHandler("start", start_private, filters=Filters.chat_type.private)
+                    CommandHandler(
+                        "start", start_private, filters=Filters.chat_type.private
+                    )
                 ],
                 states={
                     CHOOSING: [

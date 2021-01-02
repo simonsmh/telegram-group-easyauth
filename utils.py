@@ -1,14 +1,12 @@
 #!/usr/bin/env python
-# Source: http://code.activestate.com/recipes/325905-memoize-decorator-with-timeout/#c1
+# -*- coding: utf-8 -*-
 import logging
 import logging.handlers
 import os
-import sys
 import time
 from hashlib import blake2s
-from typing import IO, Any, Union
 
-import ruamel.yaml
+from ruamel.yaml import YAML
 from telegram import ChatPermissions
 from telegram.bot import Bot
 
@@ -23,21 +21,16 @@ FullChatPermissions = ChatPermissions(
     can_pin_messages=True,
 )
 
+yaml = YAML()
+
 logger = logging.getLogger("Telegram_Group_Easyauth")
 logger.setLevel(logging.DEBUG)
 
 formater = logging.Formatter(
     "%(asctime)s - %(levelname)s - %(funcName)s[%(module)s:%(lineno)d] - %(message)s"
 )
-streamhandler = logging.StreamHandler()
-streamhandler.setLevel(logging.INFO)
-streamhandler.setFormatter(formater)
-logger.addHandler(streamhandler)
 
-
-yaml = ruamel.yaml.YAML()
-
-
+# Source: http://code.activestate.com/recipes/325905-memoize-decorator-with-timeout/#c1
 class MWT(object):
     """Memoize With Timeout"""
 
@@ -106,34 +99,20 @@ def get_chat_admins_name(bot: Bot, chat_id: int, extra_user=None) -> str:
     return " ".join(admins)
 
 
-def save_yml(config: dict, file: Union[IO[str], IO[bytes]]) -> Any:
-    return yaml.dump(config, file)
+def log_to_stream() -> None:
+    streamhandler = logging.StreamHandler()
+    streamhandler.setLevel(logging.INFO)
+    streamhandler.setFormatter(formater)
+    logger.addHandler(streamhandler)
 
 
-def load_yml(file: Union[IO[str], IO[bytes], bytes]) -> Any:
-    return yaml.load(file)
-
-
-def load_yml_path(filename: str = "config.yml") -> Any:
-    try:
-        with open(filename, "r", encoding="utf-8") as file:
-            config = load_yml(file)
-    except FileNotFoundError:
-        try:
-            filename = f"{os.path.split(os.path.realpath(__file__))[0]}/{filename}"
-            with open(filename, "r", encoding="utf-8") as file:
-                config = load_yml(file)
-        except FileNotFoundError:
-            logger.error(f"Cannot find {filename}.")
-            sys.exit(1)
-    logger.info(f"Yaml: Loaded {filename}")
+def log_to_file(filename) -> None:
     filehandler = logging.handlers.RotatingFileHandler(
-        f"{filename}.log", maxBytes=1048576, backupCount=5, encoding="utf-8"
+        filename, maxBytes=1048576, backupCount=5, encoding="utf-8"
     )
     filehandler.setLevel(logging.DEBUG)
     filehandler.setFormatter(formater)
     logger.addHandler(filehandler)
-    return config
 
 
 def load_config(config: dict, check_token: bool = True) -> dict:
