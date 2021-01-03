@@ -709,8 +709,7 @@ def config_file_private(update: Update, context: CallbackContext) -> None:
         logger.info(f"Private: Config file successfully downloaded {file_id}")
         try:
             with file:
-                test = yaml.load(file.getvalue())
-            config = load_config(test, check_token=False)
+                config = load_config(yaml.load(file.getvalue()), check_token=False)
             save_config(config, filename)
             message.reply_text(reload_config(context))
         except Exception as err:
@@ -788,7 +787,7 @@ if __name__ == "__main__":
         "-d",
         "--debug",
         action="store_true",
-        help=f"enable logging to file",
+        help="enable logging to file",
     )
     args = parser.parse_args()
     filename = os.path.abspath(args.file)
@@ -798,7 +797,7 @@ if __name__ == "__main__":
     if args.debug:
         log_to_file(f"{filename}.log")
     with open(filename, "r", encoding="utf-8") as file:
-        config = yaml.load(file)
+        config = load_config(yaml.load(file))
     logger.info(f"Yaml: Loaded {filename}")
     command = list()
     updater = Updater(config.get("TOKEN"))
