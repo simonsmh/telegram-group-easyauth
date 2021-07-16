@@ -68,7 +68,7 @@ def start_command(update: Update, context: CallbackContext) -> None:
 
 
 def kick(context: CallbackContext, chat_id: int, user_id: int) -> bool:
-    if context.bot.kick_chat_member(
+    if context.bot.ban_chat_member(
         chat_id=chat_id,
         user_id=user_id,
         until_date=int(time.time()) + context.bot_data.get("config").get("BANTIME"),
@@ -804,7 +804,7 @@ if __name__ == "__main__":
     save_config(config)
     updater.dispatcher.bot_data.update(config=config)
     updater.dispatcher.add_handler(
-        CommandHandler("start", start_command, filters=Filters.chat_type.group)
+        CommandHandler("start", start_command, filters=Filters.chat_type.groups)
     )
     chatfilter = Filters.chat(config.get("CHAT")) if config.get("CHAT") else None
     updater.dispatcher.add_handler(
