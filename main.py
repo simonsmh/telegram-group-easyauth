@@ -891,9 +891,11 @@ if __name__ == "__main__":
         logger.info("Admin command registered.")
     if (DOMAIN := os.environ.get("DOMAIN")) and (TOKEN := config.get("TOKEN")):
         updater.start_webhook(
-            listen="0.0.0.0", port=int(os.environ.get("PORT", 8080)), url_path=TOKEN
+            listen="0.0.0.0",
+            port=int(os.environ.get("PORT", 8080)),
+            url_path=TOKEN,
+            webhook_url=DOMAIN + TOKEN,
         )
-        updater.bot.setWebhook(DOMAIN + TOKEN)
     else:
         updater.start_polling()
     logger.info(f"Bot @{updater.bot.get_me().username} started.")
