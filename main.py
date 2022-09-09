@@ -12,6 +12,7 @@ from typing import Optional, Tuple
 
 from telegram import (
     CallbackQuery,
+    ChatAdministratorRights,
     ChatPermissions,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -898,6 +899,17 @@ if __name__ == "__main__":
         )
     else:
         updater.start_polling()
-    logger.info(f"Bot @{updater.bot.get_me().username} started.")
+    bot_me = updater.bot.get_me()
+    rights = ChatAdministratorRights.no_rights()
+    rights.can_manage_chat=True
+    rights.can_delete_messages=True
+    rights.can_restrict_members=True
+    updater.bot.set_my_default_administrator_rights(rights=rights)
+    logger.info(f"Bot's default administrator rights modified: {updater.bot.get_my_default_administrator_rights()}")
+    if not bot_me.can_join_groups:
+        logger.error(f"Bot's [Allow groups] should be enabled.")
+    if bot_me.can_read_all_group_messages:
+        logger.warning(f"Bot's [Group privacy] could be disabled.")
     updater.bot.set_my_commands(command)
+    logger.info(f"Bot @{bot_me.username} started.")
     updater.idle()

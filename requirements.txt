@@ -1,2 +1,2 @@
-python-telegram-bot==13.9
+python-telegram-bot<20,>=13.12
 ruamel.yaml
