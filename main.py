@@ -909,7 +909,7 @@ if __name__ == "__main__":
     if not bot_me.can_join_groups:
         logger.error(f"Bot's [Allow groups] should be enabled.")
     if bot_me.can_read_all_group_messages:
-        logger.warning(f"Bot's [Group privacy] could be disabled.")
+        logger.warning(f"Bot's [Group privacy] could be enabled.")
     updater.bot.set_my_commands(command)
     logger.info(f"Bot @{bot_me.username} started.")
     updater.idle()
